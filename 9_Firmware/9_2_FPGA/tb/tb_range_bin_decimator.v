@@ -20,6 +20,7 @@ module tb_range_bin_decimator;
     wire [5:0]  range_bin_index;
     reg  [1:0]  decimation_mode;
     reg  [9:0]  start_bin;
+    wire        watchdog_timeout;
 
     // ── Test bookkeeping ───────────────────────────────────────
     integer pass_count;
@@ -55,8 +56,17 @@ module tb_range_bin_decimator;
         .range_valid_out(range_valid_out),
         .range_bin_index(range_bin_index),
         .decimation_mode(decimation_mode),
-        .start_bin      (start_bin)
+        .start_bin      (start_bin),
+        .watchdog_timeout(watchdog_timeout)
     );
+
+    // ── Watchdog timeout pulse counter ───────────────────────────
+    integer wd_pulse_count;
+    always @(posedge clk) begin
+        #1;
+        if (watchdog_timeout)
+            wd_pulse_count = wd_pulse_count + 1;
+    end
 
     // ── Concurrent output capture block ────────────────────────
     // Runs alongside the initial block, captures every valid output
@@ -186,6 +196,7 @@ module tb_range_bin_decimator;
         test_num   = 0;
         cap_enable = 0;
         cap_count  = 0;
+        wd_pulse_count = 0;
 
         // Init cap arrays
         for (i = 0; i < OUTPUT_BINS; i = i + 1) begin
@@ -715,6 +726,113 @@ module tb_range_bin_decimator;
         check(cap_count == OUTPUT_BINS, "14c: start_bin=0 still works");
         check(cap_count >= 1 && cap_i[0] == 16'sd8,
               "14c: Bin 0 = 8 (original behavior preserved)");
+
+        // ════════════════════════════════════════════════════════
+        // TEST GROUP 15: Watchdog Timeout (Fix 5)
+        // ════════════════════════════════════════════════════════
+        $display("\n--- Test Group 15: Watchdog Timeout (Fix 5) ---");
+
+        // 15a: Stall in ST_PROCESS — feed 8 samples (half a group) then stop.
+        //      After 256 clocks of no valid, watchdog should fire and return to IDLE.
+        //      After that, a fresh full frame should still produce 64 outputs.
+        $display("  15a: Stall mid-group in ST_PROCESS");
+        apply_reset;
+        wd_pulse_count = 0;
+        decimation_mode = 2'b01;  // Peak mode
+
+        // Feed only 8 samples (partial group)
+        for (i = 0; i < 8; i = i + 1) begin
+            range_i_in     = (i + 1) * 100;
+            range_q_in     = 16'd0;
+            range_valid_in = 1'b1;
+            @(posedge clk); #1;
+        end
+        range_valid_in = 1'b0;
+
+        // Wait for watchdog to fire (256 + margin)
+        repeat (280) @(posedge clk); #1;
+        check(wd_pulse_count == 1, "15a: watchdog_timeout pulsed once");
+
+        // Verify DUT returned to idle — feed a complete frame and check output
+        // Mode 01 (peak) with ramp: group 0 has values 0..15, peak = 15
+        start_capture;
+        feed_ramp;
+        stop_capture;
+
+        $display("  15a: Output count after recovery: %0d", cap_count);
+        check(cap_count == OUTPUT_BINS, "15a: 64 outputs after watchdog recovery");
+        check(cap_count >= 1 && cap_i[0] == 16'sd15, "15a: Bin 0 = 15 (peak of 0..15) after recovery");
+
+        // 15b: Stall in ST_SKIP — set start_bin=100, feed 50 samples then stop.
+        //      DUT should be in ST_SKIP, watchdog fires after 256 idle clocks.
+        $display("  15b: Stall in ST_SKIP");
+        apply_reset;
+        wd_pulse_count = 0;
+        decimation_mode = 2'b00;
+        start_bin = 10'd100;
+
+        // Feed only 50 samples (not enough to finish skipping)
+        for (i = 0; i < 50; i = i + 1) begin
+            range_i_in     = i[15:0];
+            range_q_in     = 16'd0;
+            range_valid_in = 1'b1;
+            @(posedge clk); #1;
+        end
+        range_valid_in = 1'b0;
+
+        // Wait for watchdog
+        repeat (280) @(posedge clk); #1;
+        check(wd_pulse_count == 1, "15b: watchdog_timeout pulsed once in ST_SKIP");
+
+        // Recovery: feed full frame with start_bin=0
+        start_bin = 10'd0;
+        start_capture;
+        feed_ramp;
+        stop_capture;
+        check(cap_count == OUTPUT_BINS, "15b: 64 outputs after ST_SKIP watchdog recovery");
+
+        // 15c: Normal operation should NOT trigger watchdog.
+        //      Short gaps (20 clocks) are well under the 256 limit.
+        $display("  15c: Normal gaps do NOT trigger watchdog");
+        apply_reset;
+        wd_pulse_count = 0;
+        decimation_mode = 2'b01;
+        start_bin = 10'd0;
+
+        start_capture;
+        // Reuse the gap-feed pattern from Test Group 10: gaps of 20 cycles every 50 samples
+        begin : wd_gap_feed
+            integer sample_idx, samples_since_gap;
+            sample_idx = 0;
+            samples_since_gap = 0;
+            while (sample_idx < INPUT_BINS) begin
+                range_i_in     = sample_idx[15:0];
+                range_q_in     = 16'd0;
+                range_valid_in = 1'b1;
+                @(posedge clk); #1;
+                sample_idx = sample_idx + 1;
+                samples_since_gap = samples_since_gap + 1;
+                if (samples_since_gap == 50 && sample_idx < INPUT_BINS) begin
+                    range_valid_in = 1'b0;
+                    repeat (20) @(posedge clk);
+                    #1;
+                    samples_since_gap = 0;
+                end
+            end
+            range_valid_in = 1'b0;
+        end
+        stop_capture;
+
+        check(wd_pulse_count == 0, "15c: No watchdog timeout with 20-cycle gaps");
+        check(cap_count == OUTPUT_BINS, "15c: Still outputs 64 bins with gaps");
+
+        // 15d: Watchdog does NOT fire in ST_IDLE (no false trigger when idle).
+        $display("  15d: No false watchdog in ST_IDLE");
+        apply_reset;
+        wd_pulse_count = 0;
+        // Just wait 512 clocks doing nothing — should NOT trigger watchdog
+        repeat (512) @(posedge clk); #1;
+        check(wd_pulse_count == 0, "15d: No watchdog timeout while idle");
 
         // ════════════════════════════════════════════════════════
         // Summary

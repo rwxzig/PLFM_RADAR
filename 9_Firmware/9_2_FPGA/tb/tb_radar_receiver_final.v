@@ -149,7 +149,10 @@ radar_receiver_final dut (
     .host_guard_cycles(16'd500),
     .host_short_chirp_cycles(16'd50),
     .host_short_listen_cycles(16'd1000),
-    .host_chirps_per_elev(6'd32)
+    .host_chirps_per_elev(6'd32),
+
+    // Fix 3: digital gain control — pass-through for golden reference
+    .host_gain_shift(4'd0)
 );
 
 // ============================================================================

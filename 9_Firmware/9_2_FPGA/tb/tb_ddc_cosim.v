@@ -94,7 +94,6 @@ module tb_ddc_cosim;
         .ddc_diagnostics  (ddc_diagnostics),
         .mixer_saturation (mixer_saturation),
         .filter_overflow  (filter_overflow),
-        .bypass_mode      (1'b0),
         .test_mode        (2'b00),
         .test_phase_inc   (16'h0000),
         .force_saturation (1'b0),

@@ -71,7 +71,8 @@ module usb_data_interface (
     input wire [15:0] status_guard,            // Current guard cycles
     input wire [15:0] status_short_chirp,      // Current short chirp cycles
     input wire [15:0] status_short_listen,     // Current short listen cycles
-    input wire [5:0]  status_chirps_per_elev   // Current chirps per elevation
+    input wire [5:0]  status_chirps_per_elev,  // Current chirps per elevation
+    input wire [1:0]  status_range_mode        // Fix 7: Current range mode (0x20)
 );
 
 // USB packet structure (same as before)
@@ -262,8 +263,8 @@ always @(posedge ft601_clk_in or negedge ft601_reset_n) begin
             status_words[2] <= {status_guard, status_short_chirp};
             // Word 3: {short_listen_cycles[15:0], chirps_per_elev[5:0], 10'b0}
             status_words[3] <= {status_short_listen, 10'd0, status_chirps_per_elev};
-            // Word 4: {system_status placeholder — 32'h00000000}
-            status_words[4] <= 32'h0000_0000;
+            // Word 4: Fix 7 — range_mode in bits [1:0], rest reserved
+            status_words[4] <= {30'd0, status_range_mode};
         end
 
         // Delayed version of sync[1] for edge detection

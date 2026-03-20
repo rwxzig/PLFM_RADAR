@@ -37,6 +37,11 @@ module radar_receiver_final (
     input wire [15:0] host_short_listen_cycles,
     input wire [5:0]  host_chirps_per_elev,
 
+    // Digital gain control (Fix 3: between DDC output and matched filter)
+    // [3]=direction: 0=amplify(left shift), 1=attenuate(right shift)
+    // [2:0]=shift amount: 0..7 bits. Default 0 = pass-through.
+    input wire [3:0] host_gain_shift,
+
     // STM32 toggle signals for mode 00 (STM32-driven) pass-through.
     // These are CDC-synchronized in radar_system_top.v / radar_transmitter.v
     // before reaching this module. In mode 00, the RX mode controller uses
@@ -65,6 +70,11 @@ wire mem_ready;
 
 wire [15:0] adc_i_scaled, adc_q_scaled;
 wire adc_valid_sync;
+
+// Gain-controlled signals (between DDC output and matched filter)
+wire signed [15:0] gc_i, gc_q;
+wire gc_valid;
+wire [7:0] gc_saturation_count;  // Diagnostic: clipped sample counter
 
 // Reference signals for the processing chain
 wire [15:0] long_chirp_real, long_chirp_imag;
@@ -176,8 +186,7 @@ ddc_400m_enhanced ddc(
     .baseband_q(ddc_out_q), // Q output at 100MHz  
     .baseband_valid_i(ddc_valid_i),     // Valid at 100MHz
 	 .baseband_valid_q(ddc_valid_q),
-	 .mixers_enable(1'b1),
-    .bypass_mode(1'b1)
+ 	 .mixers_enable(1'b1)
 );
 
 ddc_input_interface ddc_if (
@@ -191,6 +200,22 @@ ddc_input_interface ddc_if (
     .adc_q(adc_q_scaled),
     .adc_valid(adc_valid_sync),
     .data_sync_error()
+);
+
+// 2b. Digital Gain Control (Fix 3)
+// Host-configurable power-of-2 shift between DDC output and matched filter.
+// Default gain_shift=0 → pass-through (no behavioral change from baseline).
+rx_gain_control gain_ctrl (
+    .clk(clk),
+    .reset_n(reset_n),
+    .data_i_in(adc_i_scaled),
+    .data_q_in(adc_q_scaled),
+    .valid_in(adc_valid_sync),
+    .gain_shift(host_gain_shift),
+    .data_i_out(gc_i),
+    .data_q_out(gc_q),
+    .valid_out(gc_valid),
+    .saturation_count(gc_saturation_count)
 );
 
 // 3. Dual Chirp Memory Loader
@@ -257,9 +282,9 @@ assign range_profile_valid_out = range_valid;
 matched_filter_multi_segment mf_dual (
     .clk(clk),
     .reset_n(reset_n),
-    .ddc_i({{2{adc_i_scaled[15]}}, adc_i_scaled}),
-    .ddc_q({{2{adc_q_scaled[15]}}, adc_q_scaled}),
-    .ddc_valid(adc_valid_sync),
+    .ddc_i({{2{gc_i[15]}}, gc_i}),
+    .ddc_q({{2{gc_q[15]}}, gc_q}),
+    .ddc_valid(gc_valid),
     .use_long_chirp(use_long_chirp),
     .chirp_counter(chirp_counter),
     .mc_new_chirp(mc_new_chirp),
@@ -295,7 +320,8 @@ range_bin_decimator #(
     .range_valid_out(decimated_range_valid),
     .range_bin_index(decimated_range_bin),
     .decimation_mode(2'b01),           // Peak detection mode
-    .start_bin(10'd0)
+    .start_bin(10'd0),
+    .watchdog_timeout()                // Diagnostic — unconnected (monitored via ILA if needed)
 );
 
 // ========== FRAME SYNC USING chirp_counter ==========

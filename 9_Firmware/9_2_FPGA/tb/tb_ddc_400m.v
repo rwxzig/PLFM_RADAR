@@ -22,7 +22,6 @@ module tb_ddc_400m;
     wire [7:0]  ddc_diagnostics;
     wire        mixer_saturation;
     wire        filter_overflow;
-    reg         bypass_mode;
     reg  [1:0]  test_mode;
     reg  [15:0] test_phase_inc;
     reg         force_saturation;
@@ -62,7 +61,6 @@ module tb_ddc_400m;
         .ddc_diagnostics   (ddc_diagnostics),
         .mixer_saturation  (mixer_saturation),
         .filter_overflow   (filter_overflow),
-        .bypass_mode       (bypass_mode),
         .test_mode         (test_mode),
         .test_phase_inc    (test_phase_inc),
         .force_saturation  (force_saturation),
@@ -101,7 +99,6 @@ module tb_ddc_400m;
         adc_data         = 0;
         adc_data_valid_i = 0;
         adc_data_valid_q = 0;
-        bypass_mode      = 0;
         test_mode        = 2'b00;
         test_phase_inc   = 0;
         force_saturation = 0;

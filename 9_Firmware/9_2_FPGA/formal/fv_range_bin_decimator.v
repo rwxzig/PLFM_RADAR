@@ -83,6 +83,7 @@ module fv_range_bin_decimator (
         .range_bin_index  (range_bin_index),
         .decimation_mode  (decimation_mode),
         .start_bin        (start_bin),
+        .watchdog_timeout (),
         .fv_state              (state),
         .fv_in_bin_count       (in_bin_count),
         .fv_group_sample_count (group_sample_count),

@@ -22,6 +22,7 @@
  *   G10: Stream Control (3 checks)
  *   G11: Processing Latency Budgets (2 checks)
  *   G12: Watchdog / Liveness (2 checks)
+ *   G13: Doppler/Chirps Mismatch Protection (8 checks) [Fix 4]
  *
  * Compile:
  *   iverilog -g2001 -DSIMULATION -o tb/tb_system_e2e.vvp \
@@ -745,13 +746,13 @@ initial begin
     check(dut.host_radar_mode == 2'b10,
           "G6.1: Opcode 0x01 -> host_radar_mode = 2'b10 (single chirp)");
 
-    // G6.2: Set CFAR threshold via USB command
+    // G6.2: Set detection threshold via USB command
     bfm_send_cmd(8'h03, 8'h00, 16'h1234);
-    check(dut.host_cfar_threshold == 16'h1234,
-          "G6.2: Opcode 0x03 -> host_cfar_threshold = 0x1234");
+    check(dut.host_detect_threshold == 16'h1234,
+          "G6.2: Opcode 0x03 -> host_detect_threshold = 0x1234");
 
     // G6.3: Set stream control via USB command
-    bfm_send_cmd(8'h04, 8'h00, 16'h0005);  // enable range + cfar, disable doppler
+    bfm_send_cmd(8'h04, 8'h00, 16'h0005);  // enable range + detect, disable doppler
     check(dut.host_stream_control == 3'b101,
           "G6.3: Opcode 0x04 -> host_stream_control = 3'b101");
 
@@ -808,8 +809,8 @@ initial begin
     bfm_send_cmd(8'h03, 8'h00, 16'hAAAA);
     bfm_send_cmd(8'h03, 8'h00, 16'hBBBB);
     bfm_send_cmd(8'h03, 8'h00, 16'hCCCC);
-    check(dut.host_cfar_threshold == 16'hCCCC,
-          "G7.2: Last of 3 rapid USB commands applied (CFAR=0xCCCC)");
+    check(dut.host_detect_threshold == 16'hCCCC,
+          "G7.2: Last of 3 rapid USB commands applied (threshold=0xCCCC)");
 
     // G7.3: Verify CDC path for TX chirp counter (120MHz→100MHz)
     // In the AERIS-10 architecture, STM32 toggles drive the TX chirp
@@ -822,10 +823,10 @@ initial begin
           "G7.3: TX chirp CDC path delivered data (DAC or counter active)");
 
     // G7.4: Command CDC didn't corrupt data — verify threshold is exact
-    check(dut.host_cfar_threshold == 16'hCCCC,
-          "G7.4: CDC-transferred CFAR threshold is bit-exact (0xCCCC)");
+    check(dut.host_detect_threshold == 16'hCCCC,
+          "G7.4: CDC-transferred detect threshold is bit-exact (0xCCCC)");
 
-    // Restore CFAR threshold
+    // Restore detection threshold
     bfm_send_cmd(8'h03, 8'h00, 16'd10000);
 
     $display("");
@@ -993,6 +994,48 @@ initial begin
     // G12.2: Total simulation time is within budget
     check($time < SIM_TIMEOUT_NS,
           "G12.2: Total sim time within 2ms budget");
+
+    $display("");
+
+    // ================================================================
+    // GROUP 13: DOPPLER/CHIRPS MISMATCH PROTECTION (Fix 4)
+    // ================================================================
+    $display("--- Group 13: Doppler/Chirps Mismatch Protection ---");
+
+    // G13.1: Setting chirps_per_elev = 32 (matching DOPPLER_FFT_SIZE) clears error
+    bfm_send_cmd(8'h15, 8'h00, 16'd32);
+    check(dut.host_chirps_per_elev == 6'd32,
+          "G13.1: chirps_per_elev=32 accepted (matches FFT size)");
+
+    // G13.2: Error flag is clear when value matches
+    check(dut.chirps_mismatch_error == 1'b0,
+          "G13.2: Mismatch error clear when chirps==DOPPLER_FFT_SIZE");
+
+    // G13.3: Setting chirps_per_elev > 32 gets clamped to 32
+    bfm_send_cmd(8'h15, 8'h00, 16'd48);
+    check(dut.host_chirps_per_elev == 6'd32,
+          "G13.3: chirps_per_elev=48 clamped to 32");
+
+    // G13.4: Mismatch error flag set after clamping
+    check(dut.chirps_mismatch_error == 1'b1,
+          "G13.4: Mismatch error set when chirps>DOPPLER_FFT_SIZE");
+
+    // G13.5: Setting chirps_per_elev = 0 gets clamped to 32
+    bfm_send_cmd(8'h15, 8'h00, 16'd0);
+    check(dut.host_chirps_per_elev == 6'd32,
+          "G13.5: chirps_per_elev=0 clamped to 32");
+
+    // G13.6: Value < 32 is accepted but flagged as mismatch
+    bfm_send_cmd(8'h15, 8'h00, 16'd16);
+    check(dut.host_chirps_per_elev == 6'd16,
+          "G13.6: chirps_per_elev=16 accepted (not clamped)");
+    check(dut.chirps_mismatch_error == 1'b1,
+          "G13.7: Mismatch error set when chirps<DOPPLER_FFT_SIZE");
+
+    // G13.8: Restore to 32, verify error clears
+    bfm_send_cmd(8'h15, 8'h00, 16'd32);
+    check(dut.chirps_mismatch_error == 1'b0,
+          "G13.8: Mismatch error clears when restored to 32");
 
     $display("");
 

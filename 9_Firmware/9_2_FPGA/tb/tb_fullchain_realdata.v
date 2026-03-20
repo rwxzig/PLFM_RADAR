@@ -115,7 +115,8 @@ range_bin_decimator #(
     .range_valid_out(decim_valid_out),
     .range_bin_index(decim_bin_index),
     .decimation_mode(2'b01),       // Peak detection mode
-    .start_bin(10'd0)
+    .start_bin(10'd0),
+    .watchdog_timeout()
 );
 
 // ============================================================================

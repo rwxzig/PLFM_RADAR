@@ -51,7 +51,10 @@ module range_bin_decimator #(
 
     // Configuration
     input wire [1:0] decimation_mode,  // 00=decimate, 01=peak, 10=average
-    input wire [9:0] start_bin         // First input bin to process
+    input wire [9:0] start_bin,        // First input bin to process
+
+    // Diagnostics
+    output reg watchdog_timeout        // Pulses high for 1 cycle on watchdog reset
 
 `ifdef FORMAL
     ,
@@ -62,6 +65,11 @@ module range_bin_decimator #(
     output wire [9:0]  fv_skip_count
 `endif
 );
+
+// Fix 5: Watchdog timeout — if no valid input arrives for WATCHDOG_LIMIT
+// clocks while in ST_PROCESS or ST_SKIP, return to ST_IDLE to prevent hang.
+// 256 clocks at 100MHz = 2.56us, well beyond normal inter-sample gap.
+localparam WATCHDOG_LIMIT = 10'd256;
 
 // ============================================================================
 // INTERNAL SIGNALS
@@ -84,6 +92,9 @@ localparam ST_DONE    = 3'd4;
 
 // Skip counter for start_bin
 reg [9:0] skip_count;
+
+// Watchdog counter — counts consecutive clocks with no range_valid_in
+reg [9:0] watchdog_count;
 
 `ifdef FORMAL
 assign fv_state              = state;
@@ -128,6 +139,8 @@ always @(posedge clk or negedge reset_n) begin
         group_sample_count <= 4'd0;
         output_bin_count  <= 6'd0;
         skip_count        <= 10'd0;
+        watchdog_count    <= 10'd0;
+        watchdog_timeout  <= 1'b0;
         range_valid_out   <= 1'b0;
         range_i_out       <= 16'd0;
         range_q_out       <= 16'd0;
@@ -140,8 +153,9 @@ always @(posedge clk or negedge reset_n) begin
         decim_i           <= 16'd0;
         decim_q           <= 16'd0;
     end else begin
-        // Default: output not valid
-        range_valid_out <= 1'b0;
+        // Default: output not valid, watchdog not triggered
+        range_valid_out  <= 1'b0;
+        watchdog_timeout <= 1'b0;
 
         case (state)
         // ================================================================
@@ -152,6 +166,7 @@ always @(posedge clk or negedge reset_n) begin
             group_sample_count <= 4'd0;
             output_bin_count   <= 6'd0;
             skip_count         <= 10'd0;
+            watchdog_count     <= 10'd0;
             peak_i             <= 16'd0;
             peak_q             <= 16'd0;
             peak_mag           <= 17'd0;
@@ -198,6 +213,7 @@ always @(posedge clk or negedge reset_n) begin
         // ================================================================
         ST_SKIP: begin
             if (range_valid_in) begin
+                watchdog_count <= 10'd0;
                 in_bin_count <= in_bin_count + 1;
 
                 if (skip_count >= start_bin) begin
@@ -226,6 +242,17 @@ always @(posedge clk or negedge reset_n) begin
                 end else begin
                     skip_count <= skip_count + 1;
                 end
+            end else begin
+                // No valid input — increment watchdog
+                if (watchdog_count >= WATCHDOG_LIMIT - 1) begin
+                    watchdog_timeout <= 1'b1;
+                    state <= ST_IDLE;
+                    `ifdef SIMULATION
+                    $display("[RNG_DECIM] WATCHDOG: timeout in ST_SKIP after %0d idle clocks", WATCHDOG_LIMIT);
+                    `endif
+                end else begin
+                    watchdog_count <= watchdog_count + 1;
+                end
             end
         end
 
@@ -234,6 +261,7 @@ always @(posedge clk or negedge reset_n) begin
         // ================================================================
         ST_PROCESS: begin
             if (range_valid_in) begin
+                watchdog_count <= 10'd0;
                 in_bin_count <= in_bin_count + 1;
 
                 // Mode-specific sample processing — always process
@@ -272,6 +300,17 @@ always @(posedge clk or negedge reset_n) begin
                     state <= ST_DONE;
                 end else begin
                     group_sample_count <= group_sample_count + 1;
+                end
+            end else begin
+                // No valid input — increment watchdog
+                if (watchdog_count >= WATCHDOG_LIMIT - 1) begin
+                    watchdog_timeout <= 1'b1;
+                    state <= ST_IDLE;
+                    `ifdef SIMULATION
+                    $display("[RNG_DECIM] WATCHDOG: timeout in ST_PROCESS after %0d idle clocks", WATCHDOG_LIMIT);
+                    `endif
+                end else begin
+                    watchdog_count <= watchdog_count + 1;
                 end
             end
         end

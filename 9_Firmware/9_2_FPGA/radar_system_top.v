@@ -161,8 +161,8 @@ wire rx_range_valid;
 wire [15:0] rx_doppler_real;
 wire [15:0] rx_doppler_imag;
 wire rx_doppler_data_valid;
-reg rx_cfar_detection;
-reg rx_cfar_valid;
+reg rx_detect_flag;       // Threshold detection result (was rx_cfar_detection)
+reg rx_detect_valid;      // Detection valid pulse (was rx_cfar_valid)
 
 // Data packing for USB
 wire [31:0] usb_range_profile;
@@ -170,8 +170,8 @@ wire usb_range_valid;
 wire [15:0] usb_doppler_real;
 wire [15:0] usb_doppler_imag;
 wire usb_doppler_valid;
-wire usb_cfar_detection;
-wire usb_cfar_valid;
+wire usb_detect_flag;     // (was usb_cfar_detection)
+wire usb_detect_valid;    // (was usb_cfar_valid)
 
 // System status
 reg [3:0] status_reg;
@@ -188,8 +188,13 @@ wire [15:0] usb_cmd_value;
 // Declared here (before rx_inst) so Icarus Verilog can resolve forward refs.
 reg [1:0]  host_radar_mode;
 reg        host_trigger_pulse;
-reg [15:0] host_cfar_threshold;
+reg [15:0] host_detect_threshold;  // (was host_cfar_threshold)
 reg [2:0]  host_stream_control;
+
+// Fix 3: Digital gain control register
+// [3]=direction: 0=amplify, 1=attenuate. [2:0]=shift amount 0..7.
+// Default 0x00 = pass-through (no gain change).
+reg [3:0]  host_gain_shift;
 
 // Gap 2: Host-configurable chirp timing registers
 // These override the compile-time defaults in radar_mode_controller when
@@ -202,6 +207,22 @@ reg [15:0] host_short_chirp_cycles;   // Opcode 0x13 (default 50)
 reg [15:0] host_short_listen_cycles;  // Opcode 0x14 (default 17450)
 reg [5:0]  host_chirps_per_elev;      // Opcode 0x15 (default 32)
 reg        host_status_request;       // Opcode 0xFF (self-clearing pulse)
+
+// Fix 4: Doppler/chirps mismatch protection
+// DOPPLER_FFT_SIZE is compile-time (32). If host sets chirps_per_elev to a
+// different value, Doppler accumulation is corrupted. Clamp at command decode
+// and flag the mismatch so the host knows.
+localparam DOPPLER_FFT_SIZE = 32;     // Must match doppler_processor parameter
+reg        chirps_mismatch_error;     // Set if host tried to set chirps != FFT size
+
+// Fix 7: Range-mode register (opcode 0x20)
+// Future-proofing for 3km/10km antenna switching.
+//   2'b00 = Auto (default — system selects based on scene)
+//   2'b01 = Short-range (3km)
+//   2'b10 = Long-range (10km)
+//   2'b11 = Reserved
+// Currently a configuration store only — antenna/timing switching TBD.
+reg [1:0]  host_range_mode;
 
 // ============================================================================
 // CLOCK BUFFERING
@@ -446,6 +467,8 @@ radar_receiver_final rx_inst (
     .host_short_chirp_cycles(host_short_chirp_cycles),
     .host_short_listen_cycles(host_short_listen_cycles),
     .host_chirps_per_elev(host_chirps_per_elev),
+    // Fix 3: digital gain control
+    .host_gain_shift(host_gain_shift),
     // STM32 toggle signals for RX mode controller (mode 00 pass-through).
     // These are the raw GPIO inputs — the RX mode controller's edge detectors
     // (inside radar_mode_controller) handle debouncing/edge detection.
@@ -464,30 +487,43 @@ assign rx_doppler_real = rx_doppler_output[15:0];
 assign rx_doppler_imag = rx_doppler_output[31:16];
 assign rx_doppler_data_valid = rx_doppler_valid;
 
-// For this implementation, we'll create a simple CFAR detection simulation
-// In a real system, this would come from a CFAR module
-reg [7:0] cfar_counter;
-reg [16:0] cfar_mag;  // Approximate magnitude for threshold detection
+// ============================================================================
+// THRESHOLD DETECTOR (renamed from misleading "CFAR" — this is NOT CFAR)
+// ============================================================================
+// Simple magnitude threshold: |I|+|Q| > host_detect_threshold
+// This is a placeholder until real CFAR (Gap 1) is implemented.
+//
+// BUG FIXES applied (Build 22):
+//   1. cfar_mag was registered (<=) then compared in same always block,
+//      causing one-cycle-lag: comparison used PREVIOUS sample's magnitude.
+//      FIX: compute magnitude combinationally (wire), compare same cycle.
+//   2. rx_cfar_detection was never cleared on non-detect cycles — stayed
+//      latched high after first detection until system reset.
+//      FIX: clear detection flag every cycle, set only on actual detect.
+
+// Combinational magnitude: no pipeline lag
+wire [16:0] detect_mag;
+wire [15:0] detect_abs_i = rx_doppler_real[15] ? (~rx_doppler_real + 16'd1) : rx_doppler_real;
+wire [15:0] detect_abs_q = rx_doppler_imag[15] ? (~rx_doppler_imag + 16'd1) : rx_doppler_imag;
+assign detect_mag = {1'b0, detect_abs_i} + {1'b0, detect_abs_q};
+
+reg [7:0] detect_counter;
 always @(posedge clk_100m_buf or negedge sys_reset_n) begin
     if (!sys_reset_n) begin
-        cfar_counter <= 8'd0;
-        rx_cfar_detection <= 1'b0;
-        rx_cfar_valid <= 1'b0;
-        cfar_mag <= 17'd0;
+        detect_counter   <= 8'd0;
+        rx_detect_flag   <= 1'b0;
+        rx_detect_valid  <= 1'b0;
     end else begin
-        rx_cfar_valid <= 1'b0;
+        // Default: clear every cycle (fixes sticky detection bug)
+        rx_detect_flag  <= 1'b0;
+        rx_detect_valid <= 1'b0;
         
-        // Simple threshold detection on doppler magnitude
         if (rx_doppler_valid) begin
-            // Calculate approximate magnitude (|I| + |Q|)
-            cfar_mag <= (rx_doppler_real[15] ? -rx_doppler_real : rx_doppler_real) +
-                        (rx_doppler_imag[15] ? -rx_doppler_imag : rx_doppler_imag);
-            
-            // Threshold detection (Gap 2: uses host-configurable threshold)
-            if (cfar_mag > {1'b0, host_cfar_threshold}) begin
-                rx_cfar_detection <= 1'b1;
-                rx_cfar_valid <= 1'b1;
-                cfar_counter <= cfar_counter + 1;
+            // Compare combinational magnitude against threshold (same cycle)
+            if (detect_mag > {1'b0, host_detect_threshold}) begin
+                rx_detect_flag  <= 1'b1;
+                rx_detect_valid <= 1'b1;
+                detect_counter  <= detect_counter + 1;
             end
         end
     end
@@ -505,8 +541,8 @@ assign usb_doppler_real = rx_doppler_real;
 assign usb_doppler_imag = rx_doppler_imag;
 assign usb_doppler_valid = rx_doppler_valid;
 
-assign usb_cfar_detection = rx_cfar_detection;
-assign usb_cfar_valid = rx_cfar_valid;
+assign usb_detect_flag  = rx_detect_flag;
+assign usb_detect_valid = rx_detect_valid;
 
 // ============================================================================
 // USB DATA INTERFACE INSTANTIATION
@@ -523,8 +559,8 @@ usb_data_interface usb_inst (
     .doppler_real(usb_doppler_real),
     .doppler_imag(usb_doppler_imag),
     .doppler_valid(usb_doppler_valid),
-    .cfar_detection(usb_cfar_detection),
-    .cfar_valid(usb_cfar_valid),
+    .cfar_detection(usb_detect_flag),
+    .cfar_valid(usb_detect_valid),
     
     // FT601 Interface
     .ft601_data(ft601_data),
@@ -554,7 +590,7 @@ usb_data_interface usb_inst (
 
     // Gap 2: Status readback inputs
     .status_request(host_status_request),
-    .status_cfar_threshold(host_cfar_threshold),
+    .status_cfar_threshold(host_detect_threshold),
     .status_stream_ctrl(host_stream_control),
     .status_radar_mode(host_radar_mode),
     .status_long_chirp(host_long_chirp_cycles),
@@ -562,7 +598,8 @@ usb_data_interface usb_inst (
     .status_guard(host_guard_cycles),
     .status_short_chirp(host_short_chirp_cycles),
     .status_short_listen(host_short_listen_cycles),
-    .status_chirps_per_elev(host_chirps_per_elev)
+    .status_chirps_per_elev(host_chirps_per_elev),
+    .status_range_mode(host_range_mode)
 );
 
 // ============================================================================
@@ -608,15 +645,16 @@ wire cmd_valid_100m = cmd_valid_toggle_100m ^ cmd_valid_toggle_100m_prev;
 // Sample cmd_data fields when CDC'd valid pulse arrives. Data is stable
 // because the read FSM holds cmd_opcode/addr/value until the next command.
 // NOTE: reg declarations for host_radar_mode, host_trigger_pulse,
-// host_cfar_threshold, host_stream_control are in INTERNAL SIGNALS section
+// host_detect_threshold, host_stream_control are in INTERNAL SIGNALS section
 // above (before rx_inst) to avoid Icarus Verilog forward-reference errors.
 
 always @(posedge clk_100m_buf or negedge sys_reset_n) begin
     if (!sys_reset_n) begin
         host_radar_mode    <= 2'b01;   // Default: auto-scan
         host_trigger_pulse <= 1'b0;
-        host_cfar_threshold <= 16'd10000; // Default threshold
+        host_detect_threshold <= 16'd10000; // Default threshold
         host_stream_control <= 3'b111;    // Default: all streams enabled
+        host_gain_shift     <= 4'd0;      // Default: pass-through (no gain change)
         // Gap 2: chirp timing defaults (match radar_mode_controller parameters)
         host_long_chirp_cycles  <= 16'd3000;
         host_long_listen_cycles <= 16'd13700;
@@ -625,6 +663,8 @@ always @(posedge clk_100m_buf or negedge sys_reset_n) begin
         host_short_listen_cycles <= 16'd17450;
         host_chirps_per_elev    <= 6'd32;
         host_status_request     <= 1'b0;
+        chirps_mismatch_error   <= 1'b0;
+        host_range_mode         <= 2'b00;     // Default: auto
     end else begin
         host_trigger_pulse <= 1'b0;    // Self-clearing pulse
         host_status_request <= 1'b0;   // Self-clearing pulse
@@ -632,7 +672,7 @@ always @(posedge clk_100m_buf or negedge sys_reset_n) begin
             case (usb_cmd_opcode)
                 8'h01: host_radar_mode     <= usb_cmd_value[1:0];
                 8'h02: host_trigger_pulse  <= 1'b1;
-                8'h03: host_cfar_threshold <= usb_cmd_value;
+                8'h03: host_detect_threshold <= usb_cmd_value;
                 8'h04: host_stream_control <= usb_cmd_value[2:0];
                 // Gap 2: chirp timing configuration
                 8'h10: host_long_chirp_cycles  <= usb_cmd_value;
@@ -640,7 +680,23 @@ always @(posedge clk_100m_buf or negedge sys_reset_n) begin
                 8'h12: host_guard_cycles       <= usb_cmd_value;
                 8'h13: host_short_chirp_cycles <= usb_cmd_value;
                 8'h14: host_short_listen_cycles <= usb_cmd_value;
-                8'h15: host_chirps_per_elev    <= usb_cmd_value[5:0];
+                8'h15: begin
+                    // Fix 4: Clamp chirps_per_elev to DOPPLER_FFT_SIZE.
+                    // If host requests a different value, clamp and set error flag.
+                    if (usb_cmd_value[5:0] > DOPPLER_FFT_SIZE[5:0]) begin
+                        host_chirps_per_elev  <= DOPPLER_FFT_SIZE[5:0];
+                        chirps_mismatch_error <= 1'b1;
+                    end else if (usb_cmd_value[5:0] == 6'd0) begin
+                        host_chirps_per_elev  <= DOPPLER_FFT_SIZE[5:0];
+                        chirps_mismatch_error <= 1'b1;
+                    end else begin
+                        host_chirps_per_elev  <= usb_cmd_value[5:0];
+                        // Clear error only if value matches FFT size exactly
+                        chirps_mismatch_error <= (usb_cmd_value[5:0] != DOPPLER_FFT_SIZE[5:0]);
+                    end
+                end
+                8'h16: host_gain_shift         <= usb_cmd_value[3:0];  // Fix 3: digital gain
+                8'h20: host_range_mode         <= usb_cmd_value[1:0];  // Fix 7: range mode
                 8'hFF: host_status_request     <= 1'b1;  // Gap 2: status readback
                 default: ;
             endcase

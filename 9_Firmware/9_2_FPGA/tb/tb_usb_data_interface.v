@@ -72,6 +72,7 @@ module tb_usb_data_interface;
     reg  [15:0] status_short_chirp;
     reg  [15:0] status_short_listen;
     reg  [5:0]  status_chirps_per_elev;
+    reg  [1:0]  status_range_mode;
 
     // ── Clock generators (asynchronous) ────────────────────────
     always #(CLK_PERIOD / 2) clk = ~clk;
@@ -122,7 +123,8 @@ module tb_usb_data_interface;
         .status_guard          (status_guard),
         .status_short_chirp    (status_short_chirp),
         .status_short_listen   (status_short_listen),
-        .status_chirps_per_elev(status_chirps_per_elev)
+        .status_chirps_per_elev(status_chirps_per_elev),
+        .status_range_mode     (status_range_mode)
     );
 
     // ── Test bookkeeping ───────────────────────────────────────
@@ -178,6 +180,7 @@ module tb_usb_data_interface;
             status_short_chirp    = 16'd50;
             status_short_listen   = 16'd17450;
             status_chirps_per_elev = 6'd32;
+            status_range_mode     = 2'b00;
             repeat (6) @(posedge ft601_clk_in);
             reset_n = 1;
             // Wait enough cycles for stream_control CDC to propagate
@@ -881,6 +884,7 @@ module tb_usb_data_interface;
         status_short_chirp     = 16'd50;
         status_short_listen    = 16'd17450;
         status_chirps_per_elev = 6'd32;
+        status_range_mode      = 2'b10;  // Long-range for status test
 
         // Pulse status_request (1 cycle in clk domain — toggles status_req_toggle_100m)
         @(posedge clk);
@@ -937,8 +941,8 @@ module tb_usb_data_interface;
               "Status readback: word 2 = {guard, short_chirp}");
         check(uut.status_words[3] === {16'd17450, 10'd0, 6'd32},
               "Status readback: word 3 = {short_listen, 0, chirps_per_elev}");
-        check(uut.status_words[4] === 32'h0000_0000,
-              "Status readback: word 4 = placeholder 0x00000000");
+        check(uut.status_words[4] === {30'd0, 2'b10},
+              "Status readback: word 4 = range_mode=2'b10");
 
         // ════════════════════════════════════════════════════════
         // TEST GROUP 17: New Chirp Timing Opcodes (Gap 2)

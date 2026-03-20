@@ -18,7 +18,6 @@ module ddc_400m_enhanced (
     output wire [7:0] ddc_diagnostics,
     output wire mixer_saturation,
     output wire filter_overflow,
-    input wire bypass_mode,        // Test mode
 	 
 	 input wire [1:0] test_mode,
     input wire [15:0] test_phase_inc,
@@ -90,10 +89,8 @@ end
 
 // CDC synchronization for control signals (2-stage synchronizers)
 (* ASYNC_REG = "TRUE" *) reg [1:0] mixers_enable_sync_chain;
-(* ASYNC_REG = "TRUE" *) reg [1:0] bypass_mode_sync_chain;
 (* ASYNC_REG = "TRUE" *) reg [1:0] force_saturation_sync_chain;
 wire mixers_enable_sync;
-wire bypass_mode_sync;
 wire force_saturation_sync;
 
 // Debug monitoring signals
@@ -139,17 +136,14 @@ assign debug_mixed_q_trunc = mixed_q[25:8];
 // Clock Domain Crossing for Control Signals (2-stage synchronizers)
 // ============================================================================
 assign mixers_enable_sync = mixers_enable_sync_chain[1];
-assign bypass_mode_sync = bypass_mode_sync_chain[1];
 assign force_saturation_sync = force_saturation_sync_chain[1];
 
 always @(posedge clk_400m or negedge reset_n_400m) begin
     if (!reset_n_400m) begin
         mixers_enable_sync_chain <= 2'b00;
-        bypass_mode_sync_chain <= 2'b00;
         force_saturation_sync_chain <= 2'b00;
     end else begin
         mixers_enable_sync_chain <= {mixers_enable_sync_chain[0], mixers_enable};
-        bypass_mode_sync_chain <= {bypass_mode_sync_chain[0], bypass_mode};
         force_saturation_sync_chain <= {force_saturation_sync_chain[0], force_saturation};
     end
 end

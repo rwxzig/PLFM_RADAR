@@ -72,6 +72,7 @@ PROD_RTL=(
     usb_data_interface.v
     edge_detector.v
     radar_mode_controller.v
+    rx_gain_control.v
 )
 
 # Source-only RTL (not instantiated at top level, but should still be lint-clean)
@@ -367,6 +368,14 @@ run_test "Doppler Processor (DSP48)" \
     tb/tb_doppler_reg.vvp \
     tb/tb_doppler_cosim.v doppler_processor.v xfft_32.v fft_engine.v
 
+run_test "Threshold Detector (detection bugs)" \
+    tb/tb_threshold_detector.vvp \
+    tb/tb_threshold_detector.v
+
+run_test "RX Gain Control (digital gain)" \
+    tb/tb_rx_gain_control.vvp \
+    tb/tb_rx_gain_control.v rx_gain_control.v
+
 echo ""
 
 # ===========================================================================
@@ -390,7 +399,8 @@ if [[ "$QUICK" -eq 0 ]]; then
         cdc_modules.v fir_lowpass.v ddc_input_interface.v \
         chirp_memory_loader_param.v latency_buffer.v \
         matched_filter_multi_segment.v matched_filter_processing_chain.v \
-        range_bin_decimator.v doppler_processor.v xfft_32.v fft_engine.v
+        range_bin_decimator.v doppler_processor.v xfft_32.v fft_engine.v \
+        rx_gain_control.v
 
     # Golden compare
     run_test "Receiver (golden compare)" \
@@ -401,7 +411,8 @@ if [[ "$QUICK" -eq 0 ]]; then
         cdc_modules.v fir_lowpass.v ddc_input_interface.v \
         chirp_memory_loader_param.v latency_buffer.v \
         matched_filter_multi_segment.v matched_filter_processing_chain.v \
-        range_bin_decimator.v doppler_processor.v xfft_32.v fft_engine.v
+        range_bin_decimator.v doppler_processor.v xfft_32.v fft_engine.v \
+        rx_gain_control.v
 
     # Full system top (monitoring-only, legacy)
     run_test "System Top (radar_system_tb)" \
@@ -414,7 +425,8 @@ if [[ "$QUICK" -eq 0 ]]; then
         chirp_memory_loader_param.v latency_buffer.v \
         matched_filter_multi_segment.v matched_filter_processing_chain.v \
         range_bin_decimator.v doppler_processor.v xfft_32.v fft_engine.v \
-        usb_data_interface.v edge_detector.v radar_mode_controller.v
+        usb_data_interface.v edge_detector.v radar_mode_controller.v \
+        rx_gain_control.v
 
     # E2E integration (46 strict checks: TX, RX, USB R/W, CDC, safety, reset)
     run_test "System E2E (tb_system_e2e)" \
@@ -427,7 +439,8 @@ if [[ "$QUICK" -eq 0 ]]; then
         chirp_memory_loader_param.v latency_buffer.v \
         matched_filter_multi_segment.v matched_filter_processing_chain.v \
         range_bin_decimator.v doppler_processor.v xfft_32.v fft_engine.v \
-        usb_data_interface.v edge_detector.v radar_mode_controller.v
+        usb_data_interface.v edge_detector.v radar_mode_controller.v \
+        rx_gain_control.v
 else
     echo "  (skipped receiver golden + system top + E2E — use without --quick)"
     SKIP=$((SKIP + 4))
