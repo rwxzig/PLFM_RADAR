@@ -26,10 +26,20 @@ ax.axhline(polygon_y2, color="blue", linestyle="--")
 via_positions = [2, 2 + via_pitch]  # two vias for showing spacing
 for x in via_positions:
     # Case A
-    ax.add_patch(plt.Circle((x, polygon_y1), via_pad_A/2, facecolor="green", alpha=0.5, label="Via pad A" if x==2 else ""))
+    ax.add_patch(
+        plt.Circle(
+            (x, polygon_y1), via_pad_A / 2, facecolor="green", alpha=0.5,
+            label="Via pad A" if x == 2 else ""
+        )
+    )
     ax.add_patch(plt.Circle((x, polygon_y2), via_pad_A/2, facecolor="green", alpha=0.5))
     # Case B
-    ax.add_patch(plt.Circle((-x, polygon_y1), via_pad_B/2, facecolor="red", alpha=0.3, label="Via pad B" if x==2 else ""))
+    ax.add_patch(
+        plt.Circle(
+            (-x, polygon_y1), via_pad_B / 2, facecolor="red", alpha=0.3,
+            label="Via pad B" if x == 2 else ""
+        )
+    )
     ax.add_patch(plt.Circle((-x, polygon_y2), via_pad_B/2, facecolor="red", alpha=0.3))
 
 # Add text annotations
@@ -48,7 +58,9 @@ line_edge_y = rf_line_y + line_width/2
 via_center_y = polygon_y1
 ax.annotate("", xy=(2.4, line_edge_y), xytext=(2.4, via_center_y),
             arrowprops=dict(arrowstyle="<->", color="brown"))
-ax.text(2.5, (line_edge_y + via_center_y)/2, f"{via_center_offset:.2f} mm", color="brown", va="center")
+ax.text(
+    2.5, (line_edge_y + via_center_y) / 2, f"{via_center_offset:.2f} mm", color="brown", va="center"
+)
 
 # Formatting
 ax.set_xlim(-5, 5)

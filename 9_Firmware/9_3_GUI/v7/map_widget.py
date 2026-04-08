@@ -305,7 +305,10 @@ function initMap() {{
 function setTileServer(id) {{
     var cfg = tileServers[id]; if(!cfg) return;
     if(currentTileLayer) map.removeLayer(currentTileLayer);
-    currentTileLayer = L.tileLayer(cfg.url, {{ attribution:cfg.attribution, maxZoom:cfg.maxZoom }}).addTo(map);
+    currentTileLayer = L.tileLayer(
+        cfg.url,
+        {{ attribution:cfg.attribution, maxZoom:cfg.maxZoom }}
+    ).addTo(map);
 }}
 
 function updateRadarPopup() {{
@@ -313,9 +316,18 @@ function updateRadarPopup() {{
     var ll = radarMarker.getLatLng();
     radarMarker.bindPopup(
         '<div class="popup-title">Radar System</div>'+
-        '<div class="popup-row"><span class="popup-label">Lat:</span><span class="popup-value">'+ll.lat.toFixed(6)+'</span></div>'+
-        '<div class="popup-row"><span class="popup-label">Lon:</span><span class="popup-value">'+ll.lng.toFixed(6)+'</span></div>'+
-        '<div class="popup-row"><span class="popup-label">Status:</span><span class="popup-value status-approaching">Active</span></div>'
+        (
+            '<div class="popup-row"><span class="popup-label">Lat:</span>'+
+            '<span class="popup-value">'+ll.lat.toFixed(6)+'</span></div>'
+        )+
+        (
+            '<div class="popup-row"><span class="popup-label">Lon:</span>'+
+            '<span class="popup-value">'+ll.lng.toFixed(6)+'</span></div>'
+        )+
+        (
+            '<div class="popup-row"><span class="popup-label">Status:</span>'+
+            '<span class="popup-value status-approaching">Active</span></div>'
+        )
     );
 }}
 
@@ -325,10 +337,22 @@ function addLegend() {{
         var d = L.DomUtil.create('div','legend');
         d.innerHTML =
             '<div class="legend-title">Target Legend</div>'+
-            '<div class="legend-item"><div class="legend-color" style="background:#F44336"></div>Approaching</div>'+
-            '<div class="legend-item"><div class="legend-color" style="background:#2196F3"></div>Receding</div>'+
-            '<div class="legend-item"><div class="legend-color" style="background:#9E9E9E"></div>Stationary</div>'+
-            '<div class="legend-item"><div class="legend-color" style="background:#FF5252"></div>Radar</div>';
+            (
+                '<div class="legend-item"><div class="legend-color" '+
+                'style="background:#F44336"></div>Approaching</div>'
+            )+
+            (
+                '<div class="legend-item"><div class="legend-color" '+
+                'style="background:#2196F3"></div>Receding</div>'
+            )+
+            (
+                '<div class="legend-item"><div class="legend-color" '+
+                'style="background:#9E9E9E"></div>Stationary</div>'
+            )+
+            (
+                '<div class="legend-item"><div class="legend-color" '+
+                'style="background:#FF5252"></div>Radar</div>'
+            );
         return d;
     }};
     legend.addTo(map);
@@ -365,7 +389,12 @@ function updateTargets(targetsJson) {{
             }}
         }} else {{
             var marker = L.marker([lat,lon], {{ icon:makeIcon(color,sz) }}).addTo(map);
-            marker.on('click', (function(id){{ return function(){{ if(bridge) bridge.onMarkerClick(id); }}; }})(t.id));
+            marker.on(
+                'click',
+                (function(id){{
+                    return function(){{ if(bridge) bridge.onMarkerClick(id); }};
+                }})(t.id)
+            );
             targetMarkers[t.id] = marker;
             if(showTrails) {{
                 targetTrails[t.id] = L.polyline(targetTrailHistory[t.id], {{
@@ -389,24 +418,50 @@ function makeIcon(color,sz) {{
     return L.divIcon({{
         className:'target-icon',
         html:'<div style="background-color:'+color+';width:'+sz+'px;height:'+sz+'px;'+
-             'border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>',
+             (
+                 'border-radius:50%;border:2px solid white;'+
+                 'box-shadow:0 2px 6px rgba(0,0,0,0.4);'
+             )+'</div>',
         iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]
     }});
 }}
 
 function updateTargetPopup(t) {{
     if(!targetMarkers[t.id]) return;
-    var sc = t.velocity>1?'status-approaching':(t.velocity<-1?'status-receding':'status-stationary');
+    var sc = t.velocity>1
+        ? 'status-approaching'
+        : (t.velocity<-1 ? 'status-receding' : 'status-stationary');
     var st = t.velocity>1?'Approaching':(t.velocity<-1?'Receding':'Stationary');
     targetMarkers[t.id].bindPopup(
         '<div class="popup-title">Target #'+t.id+'</div>'+
-        '<div class="popup-row"><span class="popup-label">Range:</span><span class="popup-value">'+t.range.toFixed(1)+' m</span></div>'+
-        '<div class="popup-row"><span class="popup-label">Velocity:</span><span class="popup-value">'+t.velocity.toFixed(1)+' m/s</span></div>'+
-        '<div class="popup-row"><span class="popup-label">Azimuth:</span><span class="popup-value">'+t.azimuth.toFixed(1)+'&deg;</span></div>'+
-        '<div class="popup-row"><span class="popup-label">Elevation:</span><span class="popup-value">'+t.elevation.toFixed(1)+'&deg;</span></div>'+
-        '<div class="popup-row"><span class="popup-label">SNR:</span><span class="popup-value">'+t.snr.toFixed(1)+' dB</span></div>'+
-        '<div class="popup-row"><span class="popup-label">Track:</span><span class="popup-value">'+t.track_id+'</span></div>'+
-        '<div class="popup-row"><span class="popup-label">Status:</span><span class="popup-value '+sc+'">'+st+'</span></div>'
+        (
+            '<div class="popup-row"><span class="popup-label">Range:</span>'+
+            '<span class="popup-value">'+t.range.toFixed(1)+' m</span></div>'
+        )+
+        (
+            '<div class="popup-row"><span class="popup-label">Velocity:</span>'+
+            '<span class="popup-value">'+t.velocity.toFixed(1)+' m/s</span></div>'
+        )+
+        (
+            '<div class="popup-row"><span class="popup-label">Azimuth:</span>'+
+            '<span class="popup-value">'+t.azimuth.toFixed(1)+'&deg;</span></div>'
+        )+
+        (
+            '<div class="popup-row"><span class="popup-label">Elevation:</span>'+
+            '<span class="popup-value">'+t.elevation.toFixed(1)+'&deg;</span></div>'
+        )+
+        (
+            '<div class="popup-row"><span class="popup-label">SNR:</span>'+
+            '<span class="popup-value">'+t.snr.toFixed(1)+' dB</span></div>'
+        )+
+        (
+            '<div class="popup-row"><span class="popup-label">Track:</span>'+
+            '<span class="popup-value">'+t.track_id+'</span></div>'
+        )+
+        (
+            '<div class="popup-row"><span class="popup-label">Status:</span>'+
+            '<span class="popup-value '+sc+'">'+st+'</span></div>'
+        )
     );
 }}
 

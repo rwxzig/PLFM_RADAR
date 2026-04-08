@@ -15,7 +15,10 @@ theta_n= 2*np.pi*(pow(N,2)*pow(Ts,2)*(fmax-fmin)/(2*Tb)+fmin*N*Ts) # instantaneo
 y = 1 + np.sin(theta_n) # ramp signal in time domain
 
 M = np.arange(n, 2*n, 1)
-theta_m= 2*np.pi*(pow(M,2)*pow(Ts,2)*(-fmax+fmin)/(2*Tb)+(-fmin+2*fmax)*M*Ts)-2*np.pi*((fmin-fmax)*Tb/2+(2*fmax-fmin)*Tb) # instantaneous phase
+theta_m= (
+    2*np.pi*(pow(M,2)*pow(Ts,2)*(-fmax+fmin)/(2*Tb)+(-fmin+2*fmax)*M*Ts)
+    - 2*np.pi*((fmin-fmax)*Tb/2+(2*fmax-fmin)*Tb)
+) # instantaneous phase
 z = 1 + np.sin(theta_m) # ramp signal in time domain
 
 x = np.concatenate((y, z))
@@ -24,9 +27,9 @@ t = Ts*np.arange(0,2*n,1)
 plt.plot(t, x)
 X = fft(x)
 L =len(X)
-l = np.arange(L)
+freq_indices = np.arange(L)
 T = L*Ts
-freq = l/T
+freq = freq_indices/T
 
 print("The Array is: ", x) #printing the array
 

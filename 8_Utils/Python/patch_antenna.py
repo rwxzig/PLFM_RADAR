@@ -12,13 +12,22 @@ def calculate_patch_antenna_parameters(frequency, epsilon_r, h_sub, h_cu, array)
     lamb = c /(frequency * 1e9)
     
     # Calculate the effective dielectric constant
-    epsilon_eff = (epsilon_r + 1) / 2 + (epsilon_r - 1) / 2 * (1 + 12 * h_sub_m / (array[1] * h_cu_m)) ** (-0.5)
+    epsilon_eff = (
+        (epsilon_r + 1) / 2
+        + (epsilon_r - 1) / 2 * (1 + 12 * h_sub_m / (array[1] * h_cu_m)) ** (-0.5)
+    )
     
     # Calculate the width of the patch
     W = c / (2 * frequency * 1e9) * np.sqrt(2 / (epsilon_r + 1))
     
     # Calculate the effective length
-    delta_L = 0.412 * h_sub_m * (epsilon_eff + 0.3) * (W / h_sub_m + 0.264) / ((epsilon_eff - 0.258) * (W / h_sub_m + 0.8))
+    delta_L = (
+        0.412
+        * h_sub_m
+        * (epsilon_eff + 0.3)
+        * (W / h_sub_m + 0.264)
+        / ((epsilon_eff - 0.258) * (W / h_sub_m + 0.8))
+    )
     
     # Calculate the length of the patch
     L = c / (2 * frequency * 1e9 * np.sqrt(epsilon_eff)) - 2 * delta_L
@@ -31,7 +40,10 @@ def calculate_patch_antenna_parameters(frequency, epsilon_r, h_sub, h_cu, array)
     
     # Calculate the feeding line width (W_feed)
     Z0 = 50  # Characteristic impedance of the feeding line (typically 50 ohms)
-    A = Z0 / 60 * np.sqrt((epsilon_r + 1) / 2) + (epsilon_r - 1) / (epsilon_r + 1) * (0.23 + 0.11 / epsilon_r)
+    A = (
+        Z0 / 60 * np.sqrt((epsilon_r + 1) / 2)
+        + (epsilon_r - 1) / (epsilon_r + 1) * (0.23 + 0.11 / epsilon_r)
+    )
     W_feed = 8 * h_sub_m / np.exp(A) - 2 * h_cu_m
     
     # Convert results back to mm
@@ -50,7 +62,9 @@ h_sub = 0.102  # Height of substrate in mm
 h_cu = 0.07  # Height of copper in mm
 array = [2, 2]  # 2x2 array
 
-W_mm, L_mm, dx_mm, dy_mm, W_feed_mm = calculate_patch_antenna_parameters(frequency, epsilon_r, h_sub, h_cu, array)
+W_mm, L_mm, dx_mm, dy_mm, W_feed_mm = calculate_patch_antenna_parameters(
+    frequency, epsilon_r, h_sub, h_cu, array
+)
 
 print(f"Width of the patch: {W_mm:.4f} mm")
 print(f"Length of the patch: {L_mm:.4f} mm")

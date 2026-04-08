@@ -221,7 +221,10 @@ class RadarCalculatorGUI:
             temp = self.get_float_value(self.entries["Temperature (K):"])
             
             # Validate inputs
-            if None in [f_ghz, pulse_duration_us, prf, p_dbm, g_dbi, sens_dbm, rcs, losses_db, nf_db, temp]:
+            if None in [
+                f_ghz, pulse_duration_us, prf, p_dbm, g_dbi,
+                sens_dbm, rcs, losses_db, nf_db, temp,
+            ]:
                 messagebox.showerror("Error", "Please enter valid numeric values for all fields")
                 return
                 
@@ -235,7 +238,7 @@ class RadarCalculatorGUI:
             g_linear = 10 ** (g_dbi / 10)
             sens_linear = 10 ** ((sens_dbm - 30) / 10)
             losses_linear = 10 ** (losses_db / 10)
-            nf_linear = 10 ** (nf_db / 10)
+            _nf_linear = 10 ** (nf_db / 10)
             
             # Calculate receiver noise power
             if k is None:
@@ -298,11 +301,14 @@ class RadarCalculatorGUI:
             messagebox.showinfo("Success", "Calculation completed successfully!")
             
         except Exception as e:
-            messagebox.showerror("Calculation Error", f"An error occurred during calculation:\n{str(e)}")
+            messagebox.showerror(
+                "Calculation Error",
+                f"An error occurred during calculation:\n{str(e)}",
+            )
             
 def main():
     root = tk.Tk()
-    app = RadarCalculatorGUI(root)
+    _app = RadarCalculatorGUI(root)
     root.mainloop()
 
 if __name__ == "__main__":

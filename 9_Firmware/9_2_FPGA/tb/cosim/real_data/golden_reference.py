@@ -335,7 +335,9 @@ def run_ddc(adc_samples):
     for n in range(n_samples):
         integrators[0][n + 1] = (integrators[0][n] + mixed_i[n]) & ((1 << CIC_ACC_WIDTH) - 1)
         for s in range(1, CIC_STAGES):
-            integrators[s][n + 1] = (integrators[s][n] + integrators[s - 1][n + 1]) & ((1 << CIC_ACC_WIDTH) - 1)
+            integrators[s][n + 1] = (
+                integrators[s][n] + integrators[s - 1][n + 1]
+            ) & ((1 << CIC_ACC_WIDTH) - 1)
     
     # Downsample by 4
     n_decimated = n_samples // CIC_DECIMATION
@@ -580,8 +582,11 @@ def run_range_bin_decimator(range_fft_i, range_fft_q,
     decimated_i = np.zeros((n_chirps, output_bins), dtype=np.int64)
     decimated_q = np.zeros((n_chirps, output_bins), dtype=np.int64)
 
-    print(f"[DECIM] Decimating {n_in}→{output_bins} bins, mode={'peak' if mode==1 else 'avg' if mode==2 else 'simple'}, "
-          f"start_bin={start_bin}, {n_chirps} chirps")
+    mode_str = 'peak' if mode == 1 else 'avg' if mode == 2 else 'simple'
+    print(
+        f"[DECIM] Decimating {n_in}→{output_bins} bins, mode={mode_str}, "
+        f"start_bin={start_bin}, {n_chirps} chirps"
+    )
 
     for c in range(n_chirps):
         # Index into input, skip start_bin
@@ -678,7 +683,9 @@ def run_doppler_fft(range_data_i, range_data_q, twiddle_file_16=None):
     if twiddle_file_16 and os.path.exists(twiddle_file_16):
         cos_rom_16 = load_twiddle_rom(twiddle_file_16)
     else:
-        cos_rom_16 = np.round(32767 * np.cos(2 * np.pi * np.arange(n_fft // 4) / n_fft)).astype(np.int64)
+        cos_rom_16 = np.round(
+            32767 * np.cos(2 * np.pi * np.arange(n_fft // 4) / n_fft)
+        ).astype(np.int64)
 
     LOG2N_16 = 4
     doppler_map_i = np.zeros((n_range, n_total), dtype=np.int64)
@@ -835,7 +842,10 @@ def run_dc_notch(doppler_i, doppler_q, width=2):
     notched_i = doppler_i.copy()
     notched_q = doppler_q.copy()
 
-    print(f"[DC NOTCH] width={width}, {n_range} range bins x {n_doppler} Doppler bins (dual sub-frame)")
+    print(
+        f"[DC NOTCH] width={width}, {n_range} range bins x "
+        f"{n_doppler} Doppler bins (dual sub-frame)"
+    )
 
     if width == 0:
         print("  Pass-through (width=0)")
@@ -1167,7 +1177,12 @@ def main():
     parser = argparse.ArgumentParser(description="AERIS-10 FPGA golden reference model")
     parser.add_argument('--frame', type=int, default=0, help='Frame index to process')
     parser.add_argument('--plot', action='store_true', help='Show plots')
-    parser.add_argument('--threshold', type=int, default=10000, help='Detection threshold (L1 magnitude)')
+    parser.add_argument(
+        '--threshold',
+        type=int,
+        default=10000,
+        help='Detection threshold (L1 magnitude)'
+    )
     args = parser.parse_args()
     
     # Paths
@@ -1175,7 +1190,11 @@ def main():
     fpga_dir = os.path.abspath(os.path.join(script_dir, '..', '..', '..'))
     data_base = os.path.expanduser("~/Downloads/adi_radar_data")
     amp_data = os.path.join(data_base, "amp_radar", "phaser_amp_4MSPS_500M_300u_256_m3dB.npy")
-    amp_config = os.path.join(data_base, "amp_radar", "phaser_amp_4MSPS_500M_300u_256_m3dB_config.npy")
+    amp_config = os.path.join(
+        data_base,
+        "amp_radar",
+        "phaser_amp_4MSPS_500M_300u_256_m3dB_config.npy"
+    )
     twiddle_1024 = os.path.join(fpga_dir, "fft_twiddle_1024.mem")
     output_dir = os.path.join(script_dir, "hex")
     
@@ -1290,7 +1309,10 @@ def main():
                 q_val = int(fc_doppler_q[rbin, dbin]) & 0xFFFF
                 packed = (q_val << 16) | i_val
                 f.write(f"{packed:08X}\n")
-    print(f"  Wrote {fc_doppler_packed_file} ({DOPPLER_RANGE_BINS * DOPPLER_TOTAL_BINS} packed IQ words)")
+    print(
+        f"  Wrote {fc_doppler_packed_file} ("
+        f"{DOPPLER_RANGE_BINS * DOPPLER_TOTAL_BINS} packed IQ words)"
+    )
     
     # Save numpy arrays for the full-chain path
     np.save(os.path.join(output_dir, "decimated_range_i.npy"), decim_i)
@@ -1336,7 +1358,10 @@ def main():
                 q_val = int(notched_q[rbin, dbin]) & 0xFFFF
                 packed = (q_val << 16) | i_val
                 f.write(f"{packed:08X}\n")
-    print(f"  Wrote {fc_notched_packed_file} ({DOPPLER_RANGE_BINS * DOPPLER_TOTAL_BINS} packed IQ words)")
+    print(
+        f"  Wrote {fc_notched_packed_file} ("
+        f"{DOPPLER_RANGE_BINS * DOPPLER_TOTAL_BINS} packed IQ words)"
+    )
     
     # CFAR on DC-notched data
     CFAR_GUARD = 2
@@ -1385,7 +1410,10 @@ def main():
     with open(cfar_det_list_file, 'w') as f:
         f.write("# AERIS-10 Full-Chain CFAR Detection List\n")
         f.write(f"# Chain: decim -> MTI -> Doppler -> DC notch(w={DC_NOTCH_WIDTH}) -> CA-CFAR\n")
-        f.write(f"# CFAR: guard={CFAR_GUARD}, train={CFAR_TRAIN}, alpha=0x{CFAR_ALPHA:02X}, mode={CFAR_MODE}\n")
+        f.write(
+            f"# CFAR: guard={CFAR_GUARD}, train={CFAR_TRAIN}, "
+            f"alpha=0x{CFAR_ALPHA:02X}, mode={CFAR_MODE}\n"
+        )
         f.write("# Format: range_bin doppler_bin magnitude threshold\n")
         for det in cfar_detections:
             r, d = det
@@ -1481,12 +1509,18 @@ def main():
     print(f"  Chirps processed: {DOPPLER_CHIRPS}")
     print(f"  Samples/chirp: {FFT_SIZE}")
     print(f"  Range FFT: {FFT_SIZE}-point → {snr_range:.1f} dB vs float")
-    print(f"  Doppler FFT (direct): {DOPPLER_FFT_SIZE}-point Hamming → {snr_doppler:.1f} dB vs float")
+    print(
+        f"  Doppler FFT (direct): {DOPPLER_FFT_SIZE}-point Hamming "
+        f"→ {snr_doppler:.1f} dB vs float"
+    )
     print(f"  Detections (direct): {len(detections)} (threshold={args.threshold})")
     print("  Full-chain decimator: 1024→64 peak detection")
     print(f"  Full-chain detections: {len(fc_detections)} (threshold={args.threshold})")
     print(f"  MTI+CFAR chain: decim → MTI → Doppler → DC notch(w={DC_NOTCH_WIDTH}) → CA-CFAR")
-    print(f"  CFAR detections: {len(cfar_detections)} (guard={CFAR_GUARD}, train={CFAR_TRAIN}, alpha=0x{CFAR_ALPHA:02X})")
+    print(
+        f"  CFAR detections: {len(cfar_detections)} "
+        f"(guard={CFAR_GUARD}, train={CFAR_TRAIN}, alpha=0x{CFAR_ALPHA:02X})"
+    )
     print(f"  Hex stimulus files: {output_dir}/")
     print("  Ready for RTL co-simulation with Icarus Verilog")
     

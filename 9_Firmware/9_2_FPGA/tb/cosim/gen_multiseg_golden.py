@@ -218,7 +218,8 @@ def generate_long_chirp_test():
         if seg == 0:
             buffer_write_ptr = 0
         else:
-            # Overlap-save: copy buffer[SEGMENT_ADVANCE:SEGMENT_ADVANCE+OVERLAP] -> buffer[0:OVERLAP]
+            # Overlap-save: copy
+            # buffer[SEGMENT_ADVANCE:SEGMENT_ADVANCE+OVERLAP] -> buffer[0:OVERLAP]
             for i in range(OVERLAP_SAMPLES):
                 input_buffer_i[i] = input_buffer_i[i + SEGMENT_ADVANCE]
                 input_buffer_q[i] = input_buffer_q[i + SEGMENT_ADVANCE]

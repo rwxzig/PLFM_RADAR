@@ -33,7 +33,8 @@ from enum import Enum
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTabWidget, QLabel, QPushButton, QComboBox, QSpinBox, QDoubleSpinBox,
-    QGroupBox, QGridLayout, QSplitter, QFrame, QStatusBar, QCheckBox, QTableWidget, QTableWidgetItem,
+    QGroupBox, QGridLayout, QSplitter, QFrame, QStatusBar, QCheckBox,
+    QTableWidget, QTableWidgetItem,
     QHeaderView
 )
 from PyQt6.QtCore import (
@@ -554,11 +555,20 @@ class RadarMapWidget(QWidget):
             if (!radarMarker) return;
             
             var content = '<div class="popup-title">Radar System</div>' +
-                '<div class="popup-row"><span class="popup-label">Latitude:</span><span class="popup-value">' + 
+                (
+                    '<div class="popup-row"><span class="popup-label">Latitude:</span>' +
+                    '<span class="popup-value">'
+                ) +
                     radarMarker.getLatLng().lat.toFixed(6) + '</span></div>' +
-                '<div class="popup-row"><span class="popup-label">Longitude:</span><span class="popup-value">' + 
+                (
+                    '<div class="popup-row"><span class="popup-label">Longitude:</span>' +
+                    '<span class="popup-value">'
+                ) +
                     radarMarker.getLatLng().lng.toFixed(6) + '</span></div>' +
-                '<div class="popup-row"><span class="popup-label">Status:</span><span class="popup-value status-approaching">Active</span></div>';
+                (
+                    '<div class="popup-row"><span class="popup-label">Status:</span>' +
+                    '<span class="popup-value status-approaching">Active</span></div>'
+                );
             
             radarMarker.bindPopup(content);
         }}
@@ -570,10 +580,22 @@ class RadarMapWidget(QWidget):
                 var div = L.DomUtil.create('div', 'legend');
                 div.innerHTML = 
                     '<div class="legend-title">Target Legend</div>' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#F44336"></div>Approaching</div>' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#2196F3"></div>Receding</div>' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#9E9E9E"></div>Stationary</div>' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#FF5252"></div>Radar</div>';
+                    (
+                        '<div class="legend-item"><div class="legend-color" ' +
+                        'style="background:#F44336"></div>Approaching</div>'
+                    ) +
+                    (
+                        '<div class="legend-item"><div class="legend-color" ' +
+                        'style="background:#2196F3"></div>Receding</div>'
+                    ) +
+                    (
+                        '<div class="legend-item"><div class="legend-color" ' +
+                        'style="background:#9E9E9E"></div>Stationary</div>'
+                    ) +
+                    (
+                        '<div class="legend-item"><div class="legend-color" ' +
+                        'style="background:#FF5252"></div>Radar</div>'
+                    );
                 return div;
             }};
             
@@ -590,7 +612,9 @@ class RadarMapWidget(QWidget):
             updateRadarPopup();
             
             if (bridge) {{
-                bridge.logFromJS('Radar position updated: ' + lat.toFixed(4) + ', ' + lon.toFixed(4));
+                bridge.logFromJS(
+                    'Radar position updated: ' + lat.toFixed(4) + ', ' + lon.toFixed(4)
+                );
             }}
         }}
         
@@ -717,19 +741,40 @@ class RadarMapWidget(QWidget):
                             (target.velocity < -1 ? 'Receding' : 'Stationary');
             
             var content = '<div class="popup-title">Target #' + target.id + '</div>' +
-                '<div class="popup-row"><span class="popup-label">Range:</span><span class="popup-value">' + 
+                (
+                    '<div class="popup-row"><span class="popup-label">Range:</span>' +
+                    '<span class="popup-value">'
+                ) +
                     target.range.toFixed(1) + ' m</span></div>' +
-                '<div class="popup-row"><span class="popup-label">Velocity:</span><span class="popup-value">' + 
+                (
+                    '<div class="popup-row"><span class="popup-label">Velocity:</span>' +
+                    '<span class="popup-value">'
+                ) +
                     target.velocity.toFixed(1) + ' m/s</span></div>' +
-                '<div class="popup-row"><span class="popup-label">Azimuth:</span><span class="popup-value">' + 
+                (
+                    '<div class="popup-row"><span class="popup-label">Azimuth:</span>' +
+                    '<span class="popup-value">'
+                ) +
                     target.azimuth.toFixed(1) + '&deg;</span></div>' +
-                '<div class="popup-row"><span class="popup-label">Elevation:</span><span class="popup-value">' + 
+                (
+                    '<div class="popup-row"><span class="popup-label">Elevation:</span>' +
+                    '<span class="popup-value">'
+                ) +
                     target.elevation.toFixed(1) + '&deg;</span></div>' +
-                '<div class="popup-row"><span class="popup-label">SNR:</span><span class="popup-value">' + 
+                (
+                    '<div class="popup-row"><span class="popup-label">SNR:</span>' +
+                    '<span class="popup-value">'
+                ) +
                     target.snr.toFixed(1) + ' dB</span></div>' +
-                '<div class="popup-row"><span class="popup-label">Track ID:</span><span class="popup-value">' + 
+                (
+                    '<div class="popup-row"><span class="popup-label">Track ID:</span>' +
+                    '<span class="popup-value">'
+                ) +
                     target.track_id + '</span></div>' +
-                '<div class="popup-row"><span class="popup-label">Status:</span><span class="popup-value ' + 
+                (
+                    '<div class="popup-row"><span class="popup-label">Status:</span>' +
+                    '<span class="popup-value '
+                ) +
                     statusClass + '">' + statusText + '</span></div>';
             
             targetMarkers[target.id].bindPopup(content);
@@ -770,7 +815,11 @@ class RadarMapWidget(QWidget):
             if (visible) {{
                 // Create trails for all existing markers using stored history
                 for (var id in targetMarkers) {{
-                    if (!targetTrails[id] && targetTrailHistory[id] && targetTrailHistory[id].length > 1) {{
+                    if (
+                        !targetTrails[id] &&
+                        targetTrailHistory[id] &&
+                        targetTrailHistory[id].length > 1
+                    ) {{
                         // Get color from current marker position (approximate)
                         var color = '#4CAF50';  // Default green
                         targetTrails[id] = L.polyline(targetTrailHistory[id], {{

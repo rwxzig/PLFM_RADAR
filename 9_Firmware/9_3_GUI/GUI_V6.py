@@ -194,7 +194,9 @@ class MapGenerator:
                             var targetMarker = new google.maps.Marker({{
                                 position: {{lat: target.lat, lng: target.lng}},
                                 map: map,
-                                title: `Target: ${{target.range:.1f}}m, ${{target.velocity:.1f}}m/s`,
+                                title: (
+                                    `Target: ${{target.range:.1f}}m, ${{target.velocity:.1f}}m/s`
+                                ),
                                 icon: {{
                                     path: google.maps.SymbolPath.CIRCLE,
                                     scale: 6,
@@ -276,8 +278,14 @@ class FT601Interface:
                 found_devices = usb.core.find(find_all=True, idVendor=vid, idProduct=pid)
                 for dev in found_devices:
                     try:
-                        product = usb.util.get_string(dev, dev.iProduct) if dev.iProduct else "FT601 USB3.0"
-                        serial = usb.util.get_string(dev, dev.iSerialNumber) if dev.iSerialNumber else "Unknown"
+                        product = (
+                            usb.util.get_string(dev, dev.iProduct)
+                            if dev.iProduct else "FT601 USB3.0"
+                        )
+                        serial = (
+                            usb.util.get_string(dev, dev.iSerialNumber)
+                            if dev.iSerialNumber else "Unknown"
+                        )
                         
                         # Create FTDI URL for the device
                         url = f"ftdi://{vid:04x}:{pid:04x}:{serial}/1"
@@ -541,8 +549,14 @@ class STM32USBInterface:
                 found_devices = usb.core.find(find_all=True, idVendor=vid, idProduct=pid)
                 for dev in found_devices:
                     try:
-                        product = usb.util.get_string(dev, dev.iProduct) if dev.iProduct else "STM32 CDC"
-                        serial = usb.util.get_string(dev, dev.iSerialNumber) if dev.iSerialNumber else "Unknown"
+                        product = (
+                            usb.util.get_string(dev, dev.iProduct)
+                            if dev.iProduct else "STM32 CDC"
+                        )
+                        serial = (
+                            usb.util.get_string(dev, dev.iSerialNumber)
+                            if dev.iSerialNumber else "Unknown"
+                        )
                         devices.append({
                             'description': f"{product} ({serial})",
                             'vendor_id': vid,
@@ -561,7 +575,11 @@ class STM32USBInterface:
         except Exception as e:
             logging.error(f"Error listing USB devices: {e}")
             # Return mock devices for testing
-            return [{'description': 'STM32 Virtual COM Port', 'vendor_id': 0x0483, 'product_id': 0x5740}]
+            return [{
+                'description': 'STM32 Virtual COM Port',
+                'vendor_id': 0x0483,
+                'product_id': 0x5740,
+            }]
     
     def open_device(self, device_info):
         """Open STM32 USB CDC device"""
@@ -586,12 +604,18 @@ class STM32USBInterface:
             # Find bulk endpoints (CDC data interface)
             self.ep_out = usb.util.find_descriptor(
                 intf,
-                custom_match=lambda e: usb.util.endpoint_direction(e.bEndpointAddress) == usb.util.ENDPOINT_OUT
+                custom_match=lambda e: (
+                    usb.util.endpoint_direction(e.bEndpointAddress)
+                    == usb.util.ENDPOINT_OUT
+                )
             )
             
             self.ep_in = usb.util.find_descriptor(
                 intf,
-                custom_match=lambda e: usb.util.endpoint_direction(e.bEndpointAddress) == usb.util.ENDPOINT_IN
+                custom_match=lambda e: (
+                    usb.util.endpoint_direction(e.bEndpointAddress)
+                    == usb.util.ENDPOINT_IN
+                )
             )
             
             if self.ep_out is None or self.ep_in is None:
@@ -826,7 +850,13 @@ class USBPacketParser:
                     lon = float(parts[1])
                     alt = float(parts[2])
                     pitch = float(parts[3])  # Pitch angle in degrees
-                    return GPSData(latitude=lat, longitude=lon, altitude=alt, pitch=pitch, timestamp=time.time())
+                    return GPSData(
+                        latitude=lat,
+                        longitude=lon,
+                        altitude=alt,
+                        pitch=pitch,
+                        timestamp=time.time(),
+                    )
             
             # Try binary format (30 bytes with pitch)
             if len(data) >= 30 and data[0:4] == b'GPSB':
@@ -918,7 +948,10 @@ class RadarPacketParser:
         
         crc_calculated = self.calculate_crc(packet[0:4+length])
         if crc_calculated != crc_received:
-            logging.warning(f"CRC mismatch: got {crc_received:04X}, calculated {crc_calculated:04X}")
+            logging.warning(
+                f"CRC mismatch: got {crc_received:04X}, "
+                f"calculated {crc_calculated:04X}"
+            )
             return None
         
         if packet_type == 0x01:
@@ -1037,7 +1070,13 @@ class RadarGUI:
         
         # Counters
         self.received_packets = 0
-        self.current_gps = GPSData(latitude=41.9028, longitude=12.4964, altitude=0, pitch=0.0, timestamp=0)
+        self.current_gps = GPSData(
+            latitude=41.9028,
+            longitude=12.4964,
+            altitude=0,
+            pitch=0.0,
+            timestamp=0,
+        )
         self.corrected_elevations = []
         self.map_file_path = None
         self.google_maps_api_key = "YOUR_GOOGLE_MAPS_API_KEY"
@@ -1219,9 +1258,20 @@ class RadarGUI:
         targets_frame = ttk.LabelFrame(display_frame, text="Detected Targets (Pitch Corrected)")
         targets_frame.pack(side='right', fill='y', padx=5)
         
-        self.targets_tree = ttk.Treeview(targets_frame, 
-                                       columns=('ID', 'Range', 'Velocity', 'Azimuth', 'Elevation', 'Corrected Elev', 'SNR'), 
-                                       show='headings', height=20)
+        self.targets_tree = ttk.Treeview(
+            targets_frame,
+            columns=(
+                'ID',
+                'Range',
+                'Velocity',
+                'Azimuth',
+                'Elevation',
+                'Corrected Elev',
+                'SNR',
+            ),
+            show='headings',
+            height=20,
+        )
         self.targets_tree.heading('ID', text='Track ID')
         self.targets_tree.heading('Range', text='Range (m)')
         self.targets_tree.heading('Velocity', text='Velocity (m/s)')
@@ -1239,7 +1289,11 @@ class RadarGUI:
         self.targets_tree.column('SNR', width=70)
         
         # Add scrollbar to targets tree
-        tree_scroll = ttk.Scrollbar(targets_frame, orient="vertical", command=self.targets_tree.yview)
+        tree_scroll = ttk.Scrollbar(
+            targets_frame,
+            orient="vertical",
+            command=self.targets_tree.yview,
+        )
         self.targets_tree.configure(yscrollcommand=tree_scroll.set)
         self.targets_tree.pack(side='left', fill='both', expand=True, padx=5, pady=5)
         tree_scroll.pack(side='right', fill='y', padx=(0, 5), pady=5)
@@ -1288,7 +1342,9 @@ class RadarGUI:
                     if not self.ft601_interface.open_device_direct(ft601_devices[ft601_index]):
                         device_url = ft601_devices[ft601_index]['url']
                         if not self.ft601_interface.open_device(device_url):
-                            logging.warning("Failed to open FT601 device, continuing without radar data")
+                            logging.warning(
+                                "Failed to open FT601 device, continuing without radar data"
+                            )
                             messagebox.showwarning("Warning", "Failed to open FT601 device")
                     else:
                         # Configure burst mode if enabled
@@ -1382,7 +1438,11 @@ class RadarGUI:
                         gps_data = self.usb_packet_parser.parse_gps_data(data)
                         if gps_data:
                             self.gps_data_queue.put(gps_data)
-                            logging.info(f"GPS Data received via USB: Lat {gps_data.latitude:.6f}, Lon {gps_data.longitude:.6f}, Alt {gps_data.altitude:.1f}m, Pitch {gps_data.pitch:.1f}°")
+                            logging.info(
+                                f"GPS Data received via USB: Lat {gps_data.latitude:.6f}, "
+                                f"Lon {gps_data.longitude:.6f}, "
+                                f"Alt {gps_data.altitude:.1f}m, Pitch {gps_data.pitch:.1f}°"
+                            )
                 except Exception as e:
                     logging.error(f"Error processing GPS data via USB: {e}")
             time.sleep(0.1)
@@ -1395,7 +1455,10 @@ class RadarGUI:
                 
                 # Apply pitch correction to elevation
                 raw_elevation = packet['elevation']
-                corrected_elevation = self.apply_pitch_correction(raw_elevation, self.current_gps.pitch)
+                corrected_elevation = self.apply_pitch_correction(
+                    raw_elevation,
+                    self.current_gps.pitch,
+                )
                 
                 # Store correction for display
                 self.corrected_elevations.append({
@@ -1423,16 +1486,25 @@ class RadarGUI:
                 
             elif packet['type'] == 'doppler':
                 lambda_wavelength = 3e8 / self.settings.system_frequency
-                velocity = (packet['doppler_real'] / 32767.0) * (self.settings.prf1 * lambda_wavelength / 2)
+                velocity = (packet['doppler_real'] / 32767.0) * (
+                    self.settings.prf1 * lambda_wavelength / 2
+                )
                 self.update_target_velocity(packet, velocity)
                 
             elif packet['type'] == 'detection':
                 if packet['detected']:
                     # Apply pitch correction to detection elevation
                     raw_elevation = packet['elevation']
-                    corrected_elevation = self.apply_pitch_correction(raw_elevation, self.current_gps.pitch)
+                    corrected_elevation = self.apply_pitch_correction(
+                        raw_elevation,
+                        self.current_gps.pitch,
+                    )
                     
-                    logging.info(f"CFAR Detection: Raw Elev {raw_elevation}°, Corrected Elev {corrected_elevation:.1f}°, Pitch {self.current_gps.pitch:.1f}°")
+                    logging.info(
+                        f"CFAR Detection: Raw Elev {raw_elevation}°, "
+                        f"Corrected Elev {corrected_elevation:.1f}°, "
+                        f"Pitch {self.current_gps.pitch:.1f}°"
+                    )
                     
         except Exception as e:
             logging.error(f"Error processing radar packet: {e}")
@@ -1480,7 +1552,11 @@ class RadarGUI:
         info_frame = ttk.Frame(map_frame)
         info_frame.pack(fill='x', pady=5)
         
-        self.map_info_label = ttk.Label(info_frame, text="No GPS data received yet", font=('Arial', 10))
+        self.map_info_label = ttk.Label(
+            info_frame,
+            text="No GPS data received yet",
+            font=('Arial', 10),
+        )
         self.map_info_label.pack()
         
     def open_map_in_browser(self):
@@ -1488,7 +1564,10 @@ class RadarGUI:
         if self.map_file_path and os.path.exists(self.map_file_path):
             webbrowser.open('file://' + os.path.abspath(self.map_file_path))
         else:
-            messagebox.showwarning("Warning", "No map file available. Generate map first by receiving GPS data.")
+            messagebox.showwarning(
+                "Warning",
+                "No map file available. Generate map first by receiving GPS data.",
+            )
     
     def refresh_map(self):
         """Refresh the map with current data"""
@@ -1502,7 +1581,12 @@ class RadarGUI:
         
         try:
             # Create temporary HTML file
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as f:
+            with tempfile.NamedTemporaryFile(
+                mode='w',
+                suffix='.html',
+                delete=False,
+                encoding='utf-8',
+            ) as f:
                 map_html = self.map_generator.generate_map(
                     self.current_gps,
                     self.radar_processor.detected_targets,
@@ -1533,7 +1617,12 @@ class RadarGUI:
                 
                 # Update GPS label
                 self.gps_label.config(
-                    text=f"GPS: Lat {gps_data.latitude:.6f}, Lon {gps_data.longitude:.6f}, Alt {gps_data.altitude:.1f}m")
+                    text=(
+                        f"GPS: Lat {gps_data.latitude:.6f}, "
+                        f"Lon {gps_data.longitude:.6f}, "
+                        f"Alt {gps_data.altitude:.1f}m"
+                    )
+                )
                 
                 # Update pitch label with color coding
                 pitch_text = f"Pitch: {gps_data.pitch:+.1f}°"
@@ -1581,8 +1670,11 @@ class RadarGUI:
             entry.grid(row=i, column=1, padx=5, pady=5)
             self.settings_vars[attr] = var
         
-        ttk.Button(settings_frame, text="Apply Settings", 
-                  command=self.apply_settings).grid(row=len(entries), column=0, columnspan=2, pady=10)
+        ttk.Button(
+            settings_frame,
+            text="Apply Settings",
+            command=self.apply_settings,
+        ).grid(row=len(entries), column=0, columnspan=2, pady=10)
     
     def apply_settings(self):
         """Step 13: Apply and send radar settings via USB"""
@@ -1678,7 +1770,11 @@ class RadarGUI:
                         gps_data = self.usb_packet_parser.parse_gps_data(data)
                         if gps_data:
                             self.gps_data_queue.put(gps_data)
-                            logging.info(f"GPS Data received via USB: Lat {gps_data.latitude:.6f}, Lon {gps_data.longitude:.6f}, Alt {gps_data.altitude:.1f}m, Pitch {gps_data.pitch:.1f}°")
+                            logging.info(
+                                f"GPS Data received via USB: Lat {gps_data.latitude:.6f}, "
+                                f"Lon {gps_data.longitude:.6f}, "
+                                f"Alt {gps_data.altitude:.1f}m, Pitch {gps_data.pitch:.1f}°"
+                            )
                 except Exception as e:
                     logging.error(f"Error processing GPS data via USB: {e}")
             time.sleep(0.1)
@@ -1689,7 +1785,11 @@ class RadarGUI:
             # Update status with pitch information
             if self.running:
                 self.status_label.config(
-                    text=f"Status: Running - Packets: {self.received_packets} - Pitch: {self.current_gps.pitch:+.1f}°")
+                    text=(
+                        f"Status: Running - Packets: {self.received_packets} - "
+                        f"Pitch: {self.current_gps.pitch:+.1f}°"
+                    )
+                )
             
             # Update range-Doppler map
             if hasattr(self, 'range_doppler_plot'):

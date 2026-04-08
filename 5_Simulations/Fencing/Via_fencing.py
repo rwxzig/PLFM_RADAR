@@ -27,10 +27,20 @@ ax.axhline(polygon_y2, color="blue", linestyle="--")
 via_positions = [2, 4, 6, 8]  # x positions for visualization
 for x in via_positions:
     # Case A
-    ax.add_patch(plt.Circle((x, polygon_y1), via_pad_A/2, facecolor="green", alpha=0.5, label="Via pad A" if x==2 else ""))
+    ax.add_patch(
+        plt.Circle(
+            (x, polygon_y1), via_pad_A / 2, facecolor="green", alpha=0.5,
+            label="Via pad A" if x == 2 else ""
+        )
+    )
     ax.add_patch(plt.Circle((x, polygon_y2), via_pad_A/2, facecolor="green", alpha=0.5))
     # Case B
-    ax.add_patch(plt.Circle((-x, polygon_y1), via_pad_B/2, facecolor="red", alpha=0.3, label="Via pad B" if x==2 else ""))
+    ax.add_patch(
+        plt.Circle(
+            (-x, polygon_y1), via_pad_B / 2, facecolor="red", alpha=0.3,
+            label="Via pad B" if x == 2 else ""
+        )
+    )
     ax.add_patch(plt.Circle((-x, polygon_y2), via_pad_B/2, facecolor="red", alpha=0.3))
 
 # Add dimensions text

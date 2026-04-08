@@ -16,10 +16,18 @@ def generate_radar_csv(filename="pulse_compression_output.csv"):
     
     # Target parameters
     targets = [
-        {'range': 3000, 'velocity': 25, 'snr': 30, 'azimuth': 10, 'elevation': 5},   # Fast moving target
-        {'range': 5000, 'velocity': -15, 'snr': 25, 'azimuth': 20, 'elevation': 2},  # Approaching target
-        {'range': 8000, 'velocity': 5, 'snr': 20, 'azimuth': 30, 'elevation': 8},    # Slow moving target
-        {'range': 12000, 'velocity': -8, 'snr': 18, 'azimuth': 45, 'elevation': 3},  # Distant target
+        {
+            'range': 3000, 'velocity': 25, 'snr': 30, 'azimuth': 10, 'elevation': 5
+        },  # Fast moving target
+        {
+            'range': 5000, 'velocity': -15, 'snr': 25, 'azimuth': 20, 'elevation': 2
+        },  # Approaching target
+        {
+            'range': 8000, 'velocity': 5, 'snr': 20, 'azimuth': 30, 'elevation': 8
+        },  # Slow moving target
+        {
+            'range': 12000, 'velocity': -8, 'snr': 18, 'azimuth': 45, 'elevation': 3
+        },  # Distant target
     ]
     
     # Noise parameters
@@ -38,7 +46,7 @@ def generate_radar_csv(filename="pulse_compression_output.csv"):
             q_val = np.random.normal(0, noise_std)
             
             # Add clutter (stationary targets)
-            clutter_range = 2000  # Fixed clutter at 2km
+            _clutter_range = 2000  # Fixed clutter at 2km
             if sample < 100:  # Simulate clutter in first 100 samples
                 i_val += np.random.normal(0, clutter_std)
                 q_val += np.random.normal(0, clutter_std)
@@ -47,7 +55,9 @@ def generate_radar_csv(filename="pulse_compression_output.csv"):
             for target in targets:
                 # Calculate range bin (simplified)
                 range_bin = int(target['range'] / 20)  # ~20m per bin
-                doppler_phase = 2 * math.pi * target['velocity'] * chirp / 100  # Doppler phase shift
+                doppler_phase = (
+                    2 * math.pi * target['velocity'] * chirp / 100
+                )  # Doppler phase shift
                 
                 # Target appears around its range bin with some spread
                 if abs(sample - range_bin) < 10:
@@ -96,7 +106,9 @@ def generate_radar_csv(filename="pulse_compression_output.csv"):
             for target in targets:
                 # Range bin calculation (different for short chirps)
                 range_bin = int(target['range'] / 40)  # Different range resolution
-                doppler_phase = 2 * math.pi * target['velocity'] * (chirp + 5) / 80  # Different Doppler
+                doppler_phase = (
+                    2 * math.pi * target['velocity'] * (chirp + 5) / 80
+                )  # Different Doppler
                 
                 # Target appears around its range bin
                 if abs(sample - range_bin) < 8:

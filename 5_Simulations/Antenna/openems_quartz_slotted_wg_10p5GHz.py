@@ -137,7 +137,9 @@ Ncells = Nx*Ny*Nz
 print(f"[mesh] cells: {Nx} × {Ny} × {Nz} = {Ncells:,}")
 mem_fields_bytes = Ncells * 6 * 8  # rough ~ (Ex,Ey,Ez,Hx,Hy,Hz) doubles
 print(f"[mesh] rough field memory: ~{mem_fields_bytes/1e9:.2f} GB (solver overhead extra)")
-dx_min = min(np.diff(x_lines)); dy_min = min(np.diff(y_lines)); dz_min = min(np.diff(z_lines))
+dx_min = min(np.diff(x_lines))
+dy_min = min(np.diff(y_lines))
+dz_min = min(np.diff(z_lines))
 print(f"[mesh] min steps (mm): dx={dx_min:.3f}, dy={dy_min:.3f}, dz={dz_min:.3f}")
 
 # Optional smoothing to limit max cell size
@@ -147,7 +149,8 @@ mesh.SmoothMeshLines('all', mesh_res, ratio=1.4)
 # MATERIALS & SOLIDS
 # =================
 pec     = CSX.AddMetal('PEC')
-quartzM = CSX.AddMaterial('QUARTZ'); quartzM.SetMaterialProperty(epsilon=er_quartz)
+quartzM = CSX.AddMaterial('QUARTZ')
+quartzM.SetMaterialProperty(epsilon=er_quartz)
 airM    = CSX.AddMaterial('AIR')
 
 # Quartz full block
@@ -157,7 +160,9 @@ quartzM.AddBox([0, 0, 0], [a, b, guide_length_mm])
 pec.AddBox([-t_metal, 0, 0],     [0,        b,       guide_length_mm])        # left
 pec.AddBox([a,        0, 0],     [a+t_metal,b,       guide_length_mm])        # right
 pec.AddBox([-t_metal,-t_metal,0],[a+t_metal,0,       guide_length_mm])        # bottom
-pec.AddBox([-t_metal, b, 0],     [a+t_metal,b+t_metal,guide_length_mm])       # top (slots will pierce)
+pec.AddBox(
+    [-t_metal, b, 0], [a + t_metal, b + t_metal, guide_length_mm]
+)  # top (slots will pierce)
 
 # Slots (AIR) overriding top metal
 for zc, xc in zip(z_centers, x_centers):
@@ -215,16 +220,16 @@ print(f"[timing] FDTD solve elapsed: {t1 - t0:.2f} s")
 # ... right before NF2FF (far-field):
 t2 = time.time()
 try:
-    res = nf2ff.CalcNF2FF(Sim_Path, [f0], theta, phi)
+    res = nf2ff.CalcNF2FF(Sim_Path, [f0], theta, phi)  # noqa: F821
 except AttributeError:
-    res = FDTD.CalcNF2FF(nf2ff, Sim_Path, [f0], theta, phi)
+    res = FDTD.CalcNF2FF(nf2ff, Sim_Path, [f0], theta, phi)  # noqa: F821
 t3 = time.time()
 print(f"[timing] NF2FF (far-field) elapsed: {t3 - t2:.2f} s")
 
 # ... S-parameters postproc timing (optional):
 t4 = time.time()
-for p in ports:
-    p.CalcPort(Sim_Path, freq)
+for p in ports:  # noqa: F821
+    p.CalcPort(Sim_Path, freq)  # noqa: F821
 t5 = time.time()
 print(f"[timing] Port/S-params postproc elapsed: {t5 - t4:.2f} s")
 
@@ -250,13 +255,19 @@ Zin = ports[0].uf_tot / ports[0].if_tot
 plt.figure(figsize=(7.6,4.6))
 plt.plot(freq*1e-9, 20*np.log10(np.abs(S11)), lw=2, label='|S11|')
 plt.plot(freq*1e-9, 20*np.log10(np.abs(S21)), lw=2, ls='--', label='|S21|')
-plt.grid(True); plt.legend(); plt.xlabel('Frequency (GHz)'); plt.ylabel('Magnitude (dB)')
+plt.grid(True)
+plt.legend()
+plt.xlabel('Frequency (GHz)')
+plt.ylabel('Magnitude (dB)')
 plt.title(f'S-Parameters (profile: {PROFILE})')
 
 plt.figure(figsize=(7.6,4.6))
 plt.plot(freq*1e-9, np.real(Zin), lw=2, label='Re{Zin}')
 plt.plot(freq*1e-9, np.imag(Zin), lw=2, ls='--', label='Im{Zin}')
-plt.grid(True); plt.legend(); plt.xlabel('Frequency (GHz)'); plt.ylabel('Ohms')
+plt.grid(True)
+plt.legend()
+plt.xlabel('Frequency (GHz)')
+plt.ylabel('Ohms')
 plt.title('Input Impedance (Port 1)')
 
 # ==========================
@@ -295,22 +306,35 @@ ax = fig.add_subplot(111, projection='3d')
 ax.plot_surface(X, Y, Z, rstride=2, cstride=2, linewidth=0, antialiased=True, alpha=0.92)
 ax.set_title(f'Normalized 3D Pattern @ {f0/1e9:.2f} GHz\n(peak ≈ {Gmax_dBi:.1f} dBi)')
 ax.set_box_aspect((1,1,1))
-ax.set_xlabel('x'); ax.set_ylabel('y'); ax.set_zlabel('z')
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+ax.set_zlabel('z')
 plt.tight_layout()
 
 # ==========================
 # QUICK 2D GEOMETRY PREVIEW
 # ==========================
 plt.figure(figsize=(8.4,2.8))
-plt.fill_between([0,a], [0,0], [guide_length_mm, guide_length_mm], color='#dddddd', alpha=0.5, step='pre', label='WG top aperture')
+plt.fill_between(
+    [0, a],
+    [0, 0],
+    [guide_length_mm, guide_length_mm],
+    color='#dddddd',
+    alpha=0.5,
+    step='pre',
+    label='WG top aperture',
+)
 for zc, xc in zip(z_centers, x_centers):
     plt.gca().add_patch(plt.Rectangle((xc - slot_w/2.0, zc - slot_L/2.0),
                                       slot_w, slot_L, fc='#3355ff', ec='k'))
-plt.xlim(-2, a+2); plt.ylim(-5, guide_length_mm+5)
+plt.xlim(-2, a + 2)
+plt.ylim(-5, guide_length_mm + 5)
 plt.gca().invert_yaxis()
-plt.xlabel('x (mm)'); plt.ylabel('z (mm)')
+plt.xlabel('x (mm)')
+plt.ylabel('z (mm)')
 plt.title(f'Top-view slot layout (N={Nslots}, profile={PROFILE})')
-plt.grid(True); plt.legend()
+plt.grid(True)
+plt.legend()
 
 
 

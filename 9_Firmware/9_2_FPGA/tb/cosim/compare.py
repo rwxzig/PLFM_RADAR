@@ -358,7 +358,10 @@ def compare_scenario(scenario_name):
 
     # ---- First/last sample comparison ----
     print("\nFirst 10 samples (after alignment):")
-    print(f"  {'idx':>4s}  {'RTL_I':>8s}  {'Py_I':>8s}  {'Err_I':>6s}  {'RTL_Q':>8s}  {'Py_Q':>8s}  {'Err_Q':>6s}")
+    print(
+        f"  {'idx':>4s}  {'RTL_I':>8s}  {'Py_I':>8s}  {'Err_I':>6s}  "
+        f"{'RTL_Q':>8s}  {'Py_Q':>8s}  {'Err_Q':>6s}"
+    )
     for k in range(min(10, aligned_len)):
         ei = aligned_rtl_i[k] - aligned_py_i[k]
         eq = aligned_rtl_q[k] - aligned_py_q[k]

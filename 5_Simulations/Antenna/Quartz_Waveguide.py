@@ -106,7 +106,8 @@ mesh.SmoothMeshLines('all', mesh_res, ratio=1.4)
 # Materials
 # -------------------------
 pec    = CSX.AddMetal('PEC')
-quartz = CSX.AddMaterial('QUARTZ'); quartz.SetMaterialProperty(epsilon=er_quartz)
+quartz = CSX.AddMaterial('QUARTZ')
+quartz.SetMaterialProperty(epsilon=er_quartz)
 air    = CSX.AddMaterial('AIR')     # explicit for slot holes
 
 # -------------------------
@@ -191,13 +192,19 @@ Zin = ports[0].uf_tot / ports[0].if_tot
 plt.figure(figsize=(7.6,4.6))
 plt.plot(freq*1e-9, 20*np.log10(np.abs(S11)), lw=2, label='|S11|')
 plt.plot(freq*1e-9, 20*np.log10(np.abs(S21)), lw=2, ls='--', label='|S21|')
-plt.grid(True); plt.legend(); plt.xlabel('Frequency (GHz)'); plt.ylabel('Magnitude (dB)')
+plt.grid(True)
+plt.legend()
+plt.xlabel('Frequency (GHz)')
+plt.ylabel('Magnitude (dB)')
 plt.title('S-Parameters: Slotted Quartz-Filled WG')
 
 plt.figure(figsize=(7.6,4.6))
 plt.plot(freq*1e-9, np.real(Zin), lw=2, label='Re{Zin}')
 plt.plot(freq*1e-9, np.imag(Zin), lw=2, ls='--', label='Im{Zin}')
-plt.grid(True); plt.legend(); plt.xlabel('Frequency (GHz)'); plt.ylabel('Ohms')
+plt.grid(True)
+plt.legend()
+plt.xlabel('Frequency (GHz)')
+plt.ylabel('Ohms')
 plt.title('Input Impedance (Port 1)')
 
 # -------------------------
@@ -237,19 +244,26 @@ ax = fig.add_subplot(111, projection='3d')
 ax.plot_surface(X, Y, Z, rstride=2, cstride=2, linewidth=0, antialiased=True, alpha=0.92)
 ax.set_title(f'Normalized 3D Pattern @ {f0/1e9:.2f} GHz\n(peak ≈ {Gmax_dBi:.1f} dBi)')
 ax.set_box_aspect((1,1,1))
-ax.set_xlabel('x'); ax.set_ylabel('y'); ax.set_zlabel('z')
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+ax.set_zlabel('z')
 plt.tight_layout()
 
 # Quick 2D geometry preview (top view at y=b)
 plt.figure(figsize=(8.4,2.8))
-plt.fill_between([0,a], [0,0], [L,L], color='#dddddd', alpha=0.5, step='pre', label='WG aperture (top)')
+plt.fill_between(
+    [0, a], [0, 0], [L, L], color='#dddddd', alpha=0.5, step='pre', label='WG aperture (top)'
+)
 for zc, xc in zip(z_centers, x_centers):
     plt.gca().add_patch(plt.Rectangle((xc - slot_w/2.0, zc - slot_L/2.0),
                                       slot_w, slot_L, fc='#3355ff', ec='k'))
-plt.xlim(-2, a+2); plt.ylim(-5, L+5)
+plt.xlim(-2, a + 2)
+plt.ylim(-5, L + 5)
 plt.gca().invert_yaxis()
-plt.xlabel('x (mm)'); plt.ylabel('z (mm)')
+plt.xlabel('x (mm)')
+plt.ylabel('z (mm)')
 plt.title('Top-view slot layout (y=b plane)')
-plt.grid(True); plt.legend()
+plt.grid(True)
+plt.legend()
 
 plt.show()

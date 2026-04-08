@@ -621,7 +621,9 @@ class RadarDemoGUI:
         self.update_rate.grid(row=0, column=1, padx=10, pady=5)
         self.update_rate_value = ttk.Label(frame, text="20")
         self.update_rate_value.grid(row=0, column=2, sticky='w')
-        self.update_rate.configure(command=lambda v: self.update_rate_value.config(text=f"{float(v):.0f}"))
+        self.update_rate.configure(
+            command=lambda v: self.update_rate_value.config(text=f"{float(v):.0f}")
+        )
         
         # Color map
         ttk.Label(frame, text="Color Map:").grid(row=1, column=0, sticky='w', pady=5)
@@ -658,7 +660,9 @@ class RadarDemoGUI:
         self.noise_floor.grid(row=0, column=1, padx=10, pady=5)
         self.noise_value = ttk.Label(frame, text="10")
         self.noise_value.grid(row=0, column=2, sticky='w')
-        self.noise_floor.configure(command=lambda v: self.noise_value.config(text=f"{float(v):.1f}"))
+        self.noise_floor.configure(
+            command=lambda v: self.noise_value.config(text=f"{float(v):.1f}")
+        )
         
         # Clutter level
         ttk.Label(frame, text="Clutter Level:").grid(row=1, column=0, sticky='w', pady=5)
@@ -668,7 +672,9 @@ class RadarDemoGUI:
         self.clutter_level.grid(row=1, column=1, padx=10, pady=5)
         self.clutter_value = ttk.Label(frame, text="5")
         self.clutter_value.grid(row=1, column=2, sticky='w')
-        self.clutter_level.configure(command=lambda v: self.clutter_value.config(text=f"{float(v):.1f}"))
+        self.clutter_level.configure(
+            command=lambda v: self.clutter_value.config(text=f"{float(v):.1f}")
+        )
         
         # Number of targets
         ttk.Label(frame, text="Number of Targets:").grid(row=2, column=0, sticky='w', pady=5)
@@ -678,7 +684,9 @@ class RadarDemoGUI:
         self.num_targets.grid(row=2, column=1, padx=10, pady=5)
         self.targets_value = ttk.Label(frame, text="5")
         self.targets_value.grid(row=2, column=2, sticky='w')
-        self.num_targets.configure(command=lambda v: self.targets_value.config(text=f"{float(v):.0f}"))
+        self.num_targets.configure(
+            command=lambda v: self.targets_value.config(text=f"{float(v):.0f}")
+        )
         
         # Reset button
         ttk.Button(frame, text="Reset Simulation", 

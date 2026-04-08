@@ -106,4 +106,7 @@ plt.tight_layout()
 plt.savefig('Heatmap_Kaiser25dB_like.png', bbox_inches='tight')
 plt.show()
 
-print('Saved: E_plane_Kaiser25dB_like.png, H_plane_Kaiser25dB_like.png, Heatmap_Kaiser25dB_like.png')
+print(
+    'Saved: E_plane_Kaiser25dB_like.png, H_plane_Kaiser25dB_like.png, '
+    'Heatmap_Kaiser25dB_like.png'
+)

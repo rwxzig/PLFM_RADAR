@@ -321,7 +321,10 @@ class TestDataRecorder(unittest.TestCase):
         os.rmdir(self.tmpdir)
 
     @unittest.skipUnless(
-        (lambda: (__import__("importlib.util") and __import__("importlib").util.find_spec("h5py") is not None))(),
+        (lambda: (
+            __import__("importlib.util")
+            and __import__("importlib").util.find_spec("h5py") is not None
+        ))(),
         "h5py not installed"
     )
     def test_record_and_stop(self):

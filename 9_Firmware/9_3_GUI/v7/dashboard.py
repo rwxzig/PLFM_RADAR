@@ -755,7 +755,9 @@ class RadarDashboard(QMainWindow):
         self._det_thresh_spin.setValue(self._processing_config.detection_threshold_db)
         self._det_thresh_spin.setSuffix(" dB")
         self._det_thresh_spin.setSingleStep(1.0)
-        self._det_thresh_spin.setToolTip("SNR threshold above noise floor (used when CFAR is disabled)")
+        self._det_thresh_spin.setToolTip(
+            "SNR threshold above noise floor (used when CFAR is disabled)"
+        )
         p_layout.addWidget(self._det_thresh_spin, row, 1)
         row += 1
 
@@ -906,8 +908,11 @@ class RadarDashboard(QMainWindow):
             if idx2 >= 0 and idx2 < len(self._ft2232hq_devices):
                 url = self._ft2232hq_devices[idx2]["url"]
                 if not self._ft2232hq.open_device(url):
-                    QMessageBox.warning(self, "Warning",
-                                        "Failed to open FT2232HQ device. Radar data may not be available.")
+                    QMessageBox.warning(
+                        self,
+                        "Warning",
+                        "Failed to open FT2232HQ device. Radar data may not be available.",
+                    )
 
             # Send start flag + settings
             if not self._stm32.send_start_flag():

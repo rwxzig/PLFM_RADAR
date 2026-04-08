@@ -199,7 +199,10 @@ def test_long_chirp():
     avg_mag = sum(magnitudes) / len(magnitudes)
 
     print(f"  Magnitude: min={min_mag:.1f}, max={max_mag:.1f}, avg={avg_mag:.1f}")
-    print(f"  Max magnitude as fraction of Q15 range: {max_mag/32767:.4f} ({max_mag/32767*100:.2f}%)")
+    print(
+        f"  Max magnitude as fraction of Q15 range: "
+        f"{max_mag/32767:.4f} ({max_mag/32767*100:.2f}%)"
+    )
 
     # Check if this looks like it came from generate_reference_chirp_q15
     # That function uses 32767 * 0.9 scaling => max magnitude ~29490
@@ -262,7 +265,10 @@ def test_long_chirp():
         # Check if bandwidth roughly matches expected
         bw_match = abs(f_range - CHIRP_BW) / CHIRP_BW < 0.5  # within 50%
         if bw_match:
-            print(f"  Bandwidth {f_range/1e6:.2f} MHz roughly matches expected {CHIRP_BW/1e6:.2f} MHz")
+            print(
+                f"  Bandwidth {f_range/1e6:.2f} MHz roughly matches expected "
+                f"{CHIRP_BW/1e6:.2f} MHz"
+            )
         else:
             warn(f"Bandwidth {f_range/1e6:.2f} MHz does NOT match expected {CHIRP_BW/1e6:.2f} MHz")
 
@@ -415,8 +421,11 @@ def test_chirp_vs_model():
     print(f"    Max phase diff:  {max_phase_diff:.4f} rad ({math.degrees(max_phase_diff):.2f} deg)")
 
     phase_match = max_phase_diff < 0.5  # within 0.5 rad
-    check(phase_match,
-          f"Phase shape match: max diff = {math.degrees(max_phase_diff):.1f} deg (tolerance: 28.6 deg)")
+    check(
+        phase_match,
+        f"Phase shape match: max diff = {math.degrees(max_phase_diff):.1f} deg "
+        f"(tolerance: 28.6 deg)",
+    )
 
 
 # ============================================================================
@@ -521,8 +530,11 @@ def test_memory_addressing():
         addr_from_concat = (seg << 10) | 0  # {seg[1:0], 10'b0}
         addr_end = (seg << 10) | 1023
 
-        check(addr_from_concat == base,
-              f"Seg {seg} base address: {{{seg}[1:0], 10'b0}} = {addr_from_concat} (expected {base})")
+        check(
+            addr_from_concat == base,
+            f"Seg {seg} base address: {{{seg}[1:0], 10'b0}} = {addr_from_concat} "
+            f"(expected {base})",
+        )
         check(addr_end == end,
               f"Seg {seg} end address: {{{seg}[1:0], 10'h3FF}} = {addr_end} (expected {end})")
 

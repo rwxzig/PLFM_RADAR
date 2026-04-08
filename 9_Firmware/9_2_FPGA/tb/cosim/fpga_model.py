@@ -199,14 +199,17 @@ class NCO:
             # Wait - let me re-derive. The Verilog is:
             #   phase_accumulator <= phase_accumulator + frequency_tuning_word;
             #   phase_accum_reg   <= phase_accumulator;  // OLD value (NBA)
-            #   phase_with_offset <= phase_accum_reg + {phase_offset, 16'b0};  // OLD phase_accum_reg
+            #   phase_with_offset <= phase_accum_reg + {phase_offset, 16'b0};
+            #                         // OLD phase_accum_reg
             # Since all are NBA (<=), they all read the values from BEFORE this edge.
             # So: new_phase_accumulator = old_phase_accumulator + ftw
             #     new_phase_accum_reg   = old_phase_accumulator
             #     new_phase_with_offset = old_phase_accum_reg + offset
             old_phase_accumulator = (self.phase_accumulator - ftw) & 0xFFFFFFFF  # reconstruct
             self.phase_accum_reg = old_phase_accumulator
-            self.phase_with_offset = (old_phase_accum_reg + ((phase_offset << 16) & 0xFFFFFFFF)) & 0xFFFFFFFF
+            self.phase_with_offset = (
+                old_phase_accum_reg + ((phase_offset << 16) & 0xFFFFFFFF)
+            ) & 0xFFFFFFFF
             # phase_accumulator was already updated above
 
         # ---- Stage 3a: Register LUT address + quadrant ----
@@ -607,8 +610,14 @@ class FIRFilter:
         if (old_valid_pipe >> 0) & 1:
             for i in range(16):
                 # Sign-extend products to ACCUM_WIDTH
-                a = sign_extend(mult_results[2*i] & ((1 << self.PRODUCT_WIDTH) - 1), self.PRODUCT_WIDTH)
-                b = sign_extend(mult_results[2*i+1] & ((1 << self.PRODUCT_WIDTH) - 1), self.PRODUCT_WIDTH)
+                a = sign_extend(
+                    mult_results[2 * i] & ((1 << self.PRODUCT_WIDTH) - 1),
+                    self.PRODUCT_WIDTH,
+                )
+                b = sign_extend(
+                    mult_results[2 * i + 1] & ((1 << self.PRODUCT_WIDTH) - 1),
+                    self.PRODUCT_WIDTH,
+                )
                 self.add_l0[i] = a + b
 
         # ---- Stage 2 (Level 1): 8 pairwise sums ----
@@ -1365,7 +1374,10 @@ def _self_test():
         mag_sq = s * s + c * c
         expected = 32767 * 32767
         error_pct = abs(mag_sq - expected) / expected * 100
-        print(f"  Quadrature check: sin^2+cos^2={mag_sq}, expected~{expected}, error={error_pct:.2f}%")
+        print(
+            f"  Quadrature check: sin^2+cos^2={mag_sq}, "
+            f"expected~{expected}, error={error_pct:.2f}%"
+        )
     print("  NCO: OK")
 
     # --- Mixer test ---
