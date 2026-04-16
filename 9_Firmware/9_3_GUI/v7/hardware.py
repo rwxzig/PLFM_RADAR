@@ -25,6 +25,7 @@ if USB_AVAILABLE:
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from radar_protocol import (  # noqa: F401 — re-exported for v7 package
     FT2232HConnection,
+    FT601Connection,
     RadarProtocol,
     Opcode,
     RadarAcquisition,
